@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Release tag to validate and publish, for example 3.0.1
+        description: Release tag to validate and publish, for example 6.0.0
         required: true
         type: string
 
@@ -49,6 +49,23 @@ jobs:
 
       - name: Run tests
         run: xcrun swift test
+
+      - name: Build iOS package graph
+        run: |
+          xcodebuild \
+            -scheme InnoNetworkProtobuf-Package \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build tvOS, watchOS, and visionOS package graphs
+        run: |
+          bash Scripts/build_apple_platform_target.sh \
+            tvOS appletvos arm64-apple-tvos16.0
+          bash Scripts/build_apple_platform_target.sh \
+            watchOS watchos arm64_32-apple-watchos9.0
+          bash Scripts/build_apple_platform_target.sh \
+            visionOS xros arm64-apple-xros1.0
 
   publish-release:
     name: Publish Release

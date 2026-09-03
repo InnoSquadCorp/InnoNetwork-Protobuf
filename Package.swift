@@ -1,15 +1,41 @@
 // swift-tools-version: 6.2
 
+import Foundation
 import PackageDescription
+
+let strictSettings: [SwiftSetting] = [
+    .swiftLanguageMode(.v6)
+]
+
+let innoNetworkDependency: Package.Dependency
+if let localInnoNetworkPath = ProcessInfo.processInfo.environment[
+    "INNONETWORK_LOCAL_PATH"
+] {
+    precondition(
+        FileManager.default.fileExists(
+            atPath: localInnoNetworkPath + "/Package.swift"
+        ),
+        "INNONETWORK_LOCAL_PATH must point to an InnoNetwork package checkout."
+    )
+    innoNetworkDependency = .package(
+        name: "InnoNetwork",
+        path: localInnoNetworkPath
+    )
+} else {
+    innoNetworkDependency = .package(
+        url: "https://github.com/InnoSquadCorp/InnoNetwork.git",
+        .upToNextMajor(from: "6.0.0")
+    )
+}
 
 let package = Package(
     name: "InnoNetworkProtobuf",
     platforms: [
-        .iOS(.v18),
-        .macOS(.v15),
-        .tvOS(.v18),
-        .watchOS(.v11),
-        .visionOS(.v2)
+        .iOS(.v16),
+        .macOS(.v14),
+        .tvOS(.v16),
+        .watchOS(.v9),
+        .visionOS(.v1)
     ],
     products: [
         .library(
@@ -19,10 +45,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.35.0"),
-        .package(
-            url: "https://github.com/InnoSquadCorp/InnoNetwork.git",
-            branch: "main"
-        ),
+        innoNetworkDependency,
     ],
     targets: [
         .target(
@@ -31,7 +54,8 @@ let package = Package(
                 .product(name: "InnoNetwork", package: "InnoNetwork"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             ],
-            path: "Sources/InnoNetworkProtobuf"
+            path: "Sources/InnoNetworkProtobuf",
+            swiftSettings: strictSettings
         ),
         .executableTarget(
             name: "InnoNetworkProtobufDocSmoke",
@@ -39,7 +63,8 @@ let package = Package(
                 .product(name: "InnoNetwork", package: "InnoNetwork"),
                 "InnoNetworkProtobuf",
             ],
-            path: "SmokeTests/InnoNetworkProtobufDocSmoke"
+            path: "SmokeTests/InnoNetworkProtobufDocSmoke",
+            swiftSettings: strictSettings
         ),
         .testTarget(
             name: "InnoNetworkProtobufTests",
@@ -49,7 +74,8 @@ let package = Package(
                 "InnoNetworkProtobuf",
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             ],
-            path: "Tests/InnoNetworkProtobufTests"
+            path: "Tests/InnoNetworkProtobufTests",
+            swiftSettings: strictSettings
         ),
     ]
 )

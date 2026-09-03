@@ -14,6 +14,8 @@ required_meta_docs=(
   "$repo_root/CHANGELOG.md"
   "$repo_root/docs/RELEASE_POLICY.md"
   "$repo_root/docs/MIGRATION_POLICY.md"
+  "$repo_root/docs/ROADMAP.md"
+  "$repo_root/docs/releases/6.0.0.md"
 )
 
 fail() {
@@ -88,8 +90,11 @@ require_contains "InnoNetworkProtobuf" "$readme"
 require_contains "InnoNetwork" "$readme"
 require_contains "Protocol Buffers" "$readme"
 require_contains "protobufRequest" "$readme"
-require_contains "No 5.0 tag has been published" "$readme"
-require_contains 'branch: "main"' "$repo_root/Package.swift"
+require_contains "No 6.0 tag has been published" "$readme"
+require_contains '.upToNextMajor(from: "6.0.0")' "$repo_root/Package.swift"
+require_contains 'INNONETWORK_LOCAL_PATH' "$repo_root/Package.swift"
+require_contains 'docs/releases/6.0.0.md' "$readme"
+require_contains '## 6.1 Candidates' "$repo_root/docs/ROADMAP.md"
 
 for doc in "${required_meta_docs[@]}"; do
   [[ -f "$doc" ]] || fail "required OSS document is missing: $doc"

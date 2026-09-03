@@ -13,16 +13,26 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: Build and Test
-    runs-on: macos-15
+    name: Build and Test — Xcode ${{ matrix.xcode.label }}
+    runs-on: ${{ matrix.xcode.runner }}
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode:
+          - label: "26.0.1"
+            runner: macos-15
+            path: /Applications/Xcode_26.0.1.app
+          - label: "27.0"
+            runner: xcode-27
+            path: /Applications/Xcode.app
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
+        run: sudo xcode-select -s ${{ matrix.xcode.path }}
 
       - name: Show toolchain versions
         run: |
@@ -37,6 +47,52 @@ jobs:
 
       - name: Test
         run: xcrun swift test
+
+  apple-platform-builds:
+    name: Build — ${{ matrix.runtime }}
+    runs-on: macos-15
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: iOS
+            sdk: iphonesimulator
+            destination: generic/platform=iOS Simulator
+          - runtime: tvOS
+            sdk: appletvos
+            triple: arm64-apple-tvos16.0
+          - runtime: watchOS
+            sdk: watchos
+            triple: arm64_32-apple-watchos9.0
+          - runtime: visionOS
+            sdk: xros
+            triple: arm64-apple-xros1.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
+
+      - name: Require SDK
+        run: xcrun --sdk '${{ matrix.sdk }}' --show-sdk-path
+
+      - name: Build ${{ matrix.runtime }}
+        run: |
+          if [[ '${{ matrix.runtime }}' == 'iOS' ]]; then
+            xcodebuild \
+              -scheme InnoNetworkProtobuf-Package \
+              -destination '${{ matrix.destination }}' \
+              CODE_SIGNING_ALLOWED=NO \
+              build
+          else
+            bash Scripts/build_apple_platform_target.sh \
+              '${{ matrix.runtime }}' \
+              '${{ matrix.sdk }}' \
+              '${{ matrix.triple }}'
+          fi
 
   docs-contract-sync:
     name: Docs / Contract Sync

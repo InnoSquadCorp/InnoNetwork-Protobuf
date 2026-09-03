@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog. Released 3.x tags remain stable while
-`main` prepares the next major line alongside InnoNetwork 5.0.
+`main` prepares the coordinated 6.0 line alongside InnoNetwork 6.0.
 
 ## [Unreleased]
 
@@ -13,12 +13,14 @@ The format is based on Keep a Changelog. Released 3.x tags remain stable while
 
 ### Changed
 
-- Follow the unreleased InnoNetwork 5.0 `main` branch until matching release
-  tags are available.
+- Require InnoNetwork `6.0.0..<7.0.0` for the next tagged release while
+  retaining an explicit local-path override for pre-tag validation.
 - Use the narrow `GeneratedClientSupport` SPI for binary payload execution and
   `InnoNetworkTestSupport` for consumer-owned transport tests.
 - Map protobuf decode failures to the structured `NetworkError.decoding` case
-  and migrate retry/configuration tests to the 5.0 contracts.
+  and migrate retry/configuration tests to the 6.0 contracts.
+- Align the package deployment floors with InnoNetwork 6.0 and enforce Swift 6
+  language mode for library, test, and documentation smoke targets.
 
 ## [3.0.1]
 

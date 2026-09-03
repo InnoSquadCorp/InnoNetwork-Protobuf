@@ -1,14 +1,59 @@
 # Roadmap
 
-## Deferred Operational Follow-ups
+## 6.0 Release Boundary
 
-- persistence 내구성 심화: `fsync`, `checksum`, `compaction budget`, 대용량 큐 기준 정립
-- websocket 확장 포인트: handshake/auth refresh와 app-level protocol failure 분리
-- benchmark governance 확장: threshold 도입, trend tracking, PR comment 자동화
-- configuration API 장기 정리: advanced surface 축소와 권장 public path 단순화
-- `@unchecked Sendable` 제거 로드맵: 현재 승인된 6개 예외(`EventPipelineMetricsReporterProxy`, `URLQueryEncoder`, `QueryValueBox`, `SnakeCaseKeyTransformCache`, `_URLQueryValueEncoder`, `URLQueryCustomKeyTransform`)를 단계적으로 제거하고, 필요 시 public API와 내부 동시성 모델을 재설계
+The 6.0 release is a compatibility reset, not a feature expansion. It aligns
+the adapter with InnoNetwork 6.0, preserves the focused protobuf public API,
+and makes authentication intent, supported platforms, and release ordering
+explicit.
 
-## Public DSL Candidate
+The release remains blocked until:
 
-- 현재 `RequestEncodingPolicy`, `ResponseDecodingStrategy`, `TransportPolicy`는 내부 설계 축으로 유지합니다.
-- 다음 마일스톤에서 public DSL 승격 여부를 다시 판단합니다.
+- InnoNetwork `6.0.0` resolves remotely without `INNONETWORK_LOCAL_PATH`
+- the root package and clean consumer smoke both resolve the remote dependency
+- Xcode 26 and Xcode 27 builds pass
+- iOS, macOS, tvOS, watchOS, and visionOS build gates pass
+- an annotated InnoNetworkProtobuf `6.0.0` tag points to the reviewed main
+  commit
+
+## 6.1 Candidates
+
+Candidates are intentionally ordered by consumer value and contract risk.
+None is part of the 6.0 release contract.
+
+1. **Configurable binary decoding policy**
+   - expose a small package-owned value that can set SwiftProtobuf's message
+     depth limit and unknown-field behavior per endpoint
+   - retain the current defaults so existing endpoints do not change behavior
+   - add malformed and deeply nested payload tests before making it stable
+2. **Configurable binary encoding policy**
+   - allow endpoints that need repeatable map ordering to opt into
+     `BinaryEncodingOptions.useDeterministicOrdering`
+   - document that SwiftProtobuf deterministic output is not a cross-language
+     canonicalization or signing format
+3. **Protobuf content negotiation profile**
+   - keep `application/x-protobuf` as the default
+   - evaluate an explicit opt-in for `application/protobuf` and a matching
+     `Accept` header without introducing free-form duplicated header logic
+4. **Payload observability without payload logging**
+   - report encoded and decoded byte counts through InnoNetwork metrics hooks
+   - never log binary bodies or generated message descriptions by default
+5. **Generated-client ergonomics**
+   - evaluate a narrowly scoped adapter for generated protobuf endpoints so
+     application targets do not import `GeneratedClientSupport` directly
+   - keep the SPI dependency internal to this package
+
+## Explicitly Out of Scope for 6.1
+
+- gRPC framing, HTTP/2 stream management, and bidirectional RPC
+- schema registry or code generation ownership
+- canonical serialization for signatures or persistent fingerprints
+
+Those concerns require separate packages or contracts and should not be folded
+into the HTTP protobuf body adapter implicitly.
+
+## Promotion Gate
+
+A 6.1 candidate becomes implementation work only after it has a concrete
+consumer, an API sketch, compatibility tests, and a clear ownership boundary
+between SwiftProtobuf, InnoNetwork, and this adapter.
