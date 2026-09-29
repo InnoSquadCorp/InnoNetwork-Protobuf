@@ -43,9 +43,11 @@ jobs:
           xcrun swift build --target InnoNetworkProtobufDocSmoke
           xcrun swift run InnoNetworkProtobufDocSmoke
 
-      - name: Build and run consumer smoke package
+      - name: Build and run preferred and compatibility product consumers
         working-directory: Examples/ConsumerSmoke
-        run: xcrun swift run ConsumerSmoke
+        run: |
+          xcrun swift run ConsumerSmoke
+          xcrun swift run LegacyConsumerSmoke
 
       - name: Run tests
         run: xcrun swift test
@@ -53,7 +55,7 @@ jobs:
       - name: Build iOS package graph
         run: |
           xcodebuild \
-            -scheme InnoNetworkProtobuf-Package \
+            -scheme InnoNetwork-Protobuf-Package \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             build
@@ -93,7 +95,7 @@ jobs:
             cp "$notes_source" "$notes_target"
           else
             printf '%s\n' \
-              "# InnoNetworkProtobuf ${version}" \
+              "# InnoNetwork-Protobuf ${version}" \
               "" \
               "See CHANGELOG.md for the summarized release history." > "$notes_target"
           fi
@@ -105,5 +107,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
-          name: InnoNetworkProtobuf ${{ steps.notes.outputs.version }}
+          name: InnoNetwork-Protobuf ${{ steps.notes.outputs.version }}
           body_path: ${{ steps.notes.outputs.notes_path }}

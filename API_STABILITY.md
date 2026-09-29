@@ -1,6 +1,6 @@
 # API Stability
 
-This document defines the compatibility contract for the public OSS release of `InnoNetworkProtobuf`.
+This document defines the compatibility contract for the public OSS release of `InnoNetwork-Protobuf` (Swift module `InnoNetworkProtobuf`).
 
 ## Stable
 
@@ -26,6 +26,9 @@ This document defines the compatibility contract for the public OSS release of `
 
 ## Notes
 
+- The preferred package product is `InnoNetwork-Protobuf`; the compatibility
+  product `InnoNetworkProtobuf` remains available. Both expose the same module
+  and preserve `import InnoNetworkProtobuf`.
 - Stable items follow semantic versioning once the package is published.
 - `ProtobufAPIDefinition.sessionAuthentication` is a required security witness;
   endpoint declarations cannot inherit an implicit authentication mode.

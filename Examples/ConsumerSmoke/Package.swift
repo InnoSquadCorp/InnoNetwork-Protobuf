@@ -29,7 +29,7 @@ let package = Package(
     ],
     dependencies: [
         innoNetworkDependency,
-        .package(name: "InnoNetworkProtobuf", path: "../.."),
+        .package(name: "InnoNetwork-Protobuf", path: "../.."),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.35.0"),
     ],
     targets: [
@@ -37,10 +37,18 @@ let package = Package(
             name: "ConsumerSmoke",
             dependencies: [
                 .product(name: "InnoNetwork", package: "InnoNetwork"),
-                .product(name: "InnoNetworkProtobuf", package: "InnoNetworkProtobuf"),
+                .product(name: "InnoNetwork-Protobuf", package: "InnoNetwork-Protobuf"),
                 .product(name: "InnoNetworkTestSupport", package: "InnoNetwork"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             ]
-        )
+        ),
+        .executableTarget(
+            name: "LegacyConsumerSmoke",
+            dependencies: [
+                .product(name: "InnoNetwork", package: "InnoNetwork"),
+                .product(name: "InnoNetworkProtobuf", package: "InnoNetwork-Protobuf"),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+            ]
+        ),
     ]
 )

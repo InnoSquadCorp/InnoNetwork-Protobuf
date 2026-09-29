@@ -16,6 +16,9 @@ The format is based on Keep a Changelog. Released 3.x tags remain stable while
 
 ### Changed
 
+- Adopt `InnoNetwork-Protobuf` for repository, package and preferred product
+  naming; retain the `InnoNetworkProtobuf` module and compatibility product.
+- Validate both product names in the external consumer fixture.
 - Require InnoNetwork `6.0.0..<7.0.0` for the next tagged release while
   retaining an explicit local-path override for pre-tag validation.
 - Use the narrow `GeneratedClientSupport` SPI for binary payload execution and

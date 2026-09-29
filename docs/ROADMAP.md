@@ -14,7 +14,7 @@ The adapter release still requires:
 - the root package and clean consumer smoke both resolve the remote dependency
 - Xcode 26 and Xcode 27 builds pass
 - iOS, macOS, tvOS, watchOS, and visionOS build gates pass
-- an annotated InnoNetworkProtobuf `6.0.0` tag points to the reviewed main
+- an annotated InnoNetwork-Protobuf `6.0.0` tag points to the reviewed main
   commit
 - a post-publication clean consumer resolves both remote tags
 

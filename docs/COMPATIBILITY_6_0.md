@@ -66,13 +66,41 @@ the tuples above and scratch path `.build/compatibility-6.0.0/root`.
 Separate `baseline-tests.log`, `final-tests.log`, `doc-smoke.log`, `consumer.log`
 and `*-build.log` files retain the individual outcomes in the evidence directory.
 
+### Repository and product naming follow-up
+
+On 2026-09-30, the GitHub repository was renamed to
+`InnoSquadCorp/InnoNetwork-Protobuf`. Repository identity, all advertised branch
+and tag refs, and the existing open pull request were preserved. The old Git
+URL and the new URL returned identical refs after the rename.
+
+The 6.0 package and preferred product now use `InnoNetwork-Protobuf`; the
+`InnoNetworkProtobuf` compatibility product and Swift module remain unchanged.
+No consumer-side compiler aliases or special import flags are required.
+
+Naming-specific local checks on the same Xcode 27 / Swift 6.4 toolchain:
+
+- All 23 tests and the documentation executable: PASS.
+- Preferred product consumer (binary request/response) and compatibility
+  product consumer (original module and public API): both PASS.
+- Generated `InnoNetwork-Protobuf-Package` Xcode scheme: present; iOS Simulator
+  aggregate build: PASS with invocation-scoped `-skipMacroValidation` for the
+  reviewed core macro. This is not evidence that an unconfigured clean CI
+  runner's macro approval gate passes; that previously reported gap remains.
+- Documentation contract, workflow actionlint, and whitespace checks: PASS.
+
+Logs are in `.build/naming-20260930/`. The repository metadata rename is separate
+from code publication: no Git push, tag, workflow dispatch or Release creation
+was part of this follow-up. Historical 3.x releases retain their original
+product names. The local checkout directory was intentionally not renamed.
+
 ## Remaining publication boundaries
 
 Local checks are not remote CI or publication evidence. Before an adapter tag:
 
 1. Commit the reviewed local compatibility changes with the intended author.
    Local commits are separate from publication; push only after user
-   authorization. No remote write is part of this compatibility update.
+   authorization. The repository metadata rename above did not publish these
+   local commits or the new package product.
 2. Pass final-SHA Xcode 26 and 27 CI plus all supported platform jobs. Only
    Xcode 27 is installed on this local host.
 3. Create the separately authorized annotated adapter `6.0.0` tag and verify

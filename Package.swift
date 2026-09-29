@@ -29,7 +29,7 @@ if let localInnoNetworkPath = ProcessInfo.processInfo.environment[
 }
 
 let package = Package(
-    name: "InnoNetworkProtobuf",
+    name: "InnoNetwork-Protobuf",
     platforms: [
         .iOS(.v16),
         .macOS(.v14),
@@ -38,6 +38,11 @@ let package = Package(
         .visionOS(.v1)
     ],
     products: [
+        .library(
+            name: "InnoNetwork-Protobuf",
+            targets: ["InnoNetworkProtobuf"]
+        ),
+        // Compatibility product; both names expose the same Swift module.
         .library(
             name: "InnoNetworkProtobuf",
             targets: ["InnoNetworkProtobuf"]

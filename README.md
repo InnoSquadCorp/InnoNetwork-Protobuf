@@ -1,11 +1,11 @@
-# InnoNetworkProtobuf
+# InnoNetwork-Protobuf
 
-`InnoNetworkProtobuf` is the Protocol Buffers adapter package for [`InnoNetwork`](https://github.com/InnoSquadCorp/InnoNetwork).
+`InnoNetwork-Protobuf` is the Protocol Buffers adapter package for [`InnoNetwork`](https://github.com/InnoSquadCorp/InnoNetwork).
 
 It keeps protobuf request serialization and response decoding out of the core package so clients that only use JSON, form, download, or websocket features do not need to resolve `swift-protobuf`.
 
 > InnoNetwork `6.0.0` is published. This adapter's 6.0 development line targets
-> that release; InnoNetworkProtobuf `6.0.0` is not yet published.
+> that release; InnoNetwork-Protobuf `6.0.0` is not yet published.
 > The latest published adapter remains `3.0.1`, paired with InnoNetwork `3.0.1`.
 
 ## Coordinated Installation (after adapter publication)
@@ -17,7 +17,7 @@ dependencies: [
         .upToNextMajor(from: "6.0.0")
     ),
     .package(
-        url: "https://github.com/InnoSquadCorp/InnoNetworkProtobuf.git",
+        url: "https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git",
         .upToNextMajor(from: "6.0.0")
     ),
 ]
@@ -32,6 +32,7 @@ local core override:
 env -u INNONETWORK_LOCAL_PATH swift test
 env -u INNONETWORK_LOCAL_PATH swift run InnoNetworkProtobufDocSmoke
 env -u INNONETWORK_LOCAL_PATH swift run --package-path Examples/ConsumerSmoke ConsumerSmoke
+env -u INNONETWORK_LOCAL_PATH swift run --package-path Examples/ConsumerSmoke LegacyConsumerSmoke
 ```
 
 The consumer fixture intentionally uses the local adapter and remote core. It
@@ -47,8 +48,25 @@ Add both products to the consuming target:
 
 ```swift
 .product(name: "InnoNetwork", package: "InnoNetwork"),
-.product(name: "InnoNetworkProtobuf", package: "InnoNetworkProtobuf"),
+.product(name: "InnoNetwork-Protobuf", package: "InnoNetwork-Protobuf"),
 ```
+
+### Package name versus Swift module
+
+| Surface | Name |
+| --- | --- |
+| Repository, package display name and preferred product | `InnoNetwork-Protobuf` |
+| Swift module / source import | `InnoNetworkProtobuf` |
+| Compatibility product | `InnoNetworkProtobuf` |
+
+Use `import InnoNetworkProtobuf` in Swift source. SwiftPM maps hyphenated target
+names to underscore-separated module names; this package instead retains the
+original module for source compatibility. Both product names expose the **same**
+module; choose one product, not both. Existing source imports do not need to change.
+
+The new product is part of the upcoming 6.0 line; historical 3.x tags keep
+their original product. See [migration guidance](docs/MIGRATION_POLICY.md)
+for package identity and repository URL changes.
 
 ## Quick Start
 

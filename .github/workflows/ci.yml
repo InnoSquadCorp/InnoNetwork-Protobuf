@@ -83,7 +83,7 @@ jobs:
         run: |
           if [[ '${{ matrix.runtime }}' == 'iOS' ]]; then
             xcodebuild \
-              -scheme InnoNetworkProtobuf-Package \
+              -scheme InnoNetwork-Protobuf-Package \
               -destination '${{ matrix.destination }}' \
               CODE_SIGNING_ALLOWED=NO \
               build
@@ -130,6 +130,8 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
-      - name: Build and run consumer smoke package
+      - name: Build and run preferred and compatibility product consumers
         working-directory: Examples/ConsumerSmoke
-        run: xcrun swift run ConsumerSmoke
+        run: |
+          xcrun swift run ConsumerSmoke
+          xcrun swift run LegacyConsumerSmoke

@@ -87,7 +87,12 @@ require_pattern "public protocol HTTPEmptyResponseMessage" "$repo_root/Sources/I
 require_pattern "static func protobuf()" "$repo_root/Sources/InnoNetworkProtobuf/AnyResponseDecoder+Protobuf.swift"
 require_pattern "static func protobufEmptyCapable()" "$repo_root/Sources/InnoNetworkProtobuf/AnyResponseDecoder+Protobuf.swift"
 
-require_contains "InnoNetworkProtobuf" "$readme"
+require_contains '# InnoNetwork-Protobuf' "$readme"
+require_contains 'https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git' "$readme"
+require_contains 'import InnoNetworkProtobuf' "$readme"
+require_contains 'name: "InnoNetwork-Protobuf"' "$repo_root/Package.swift"
+require_contains 'name: "InnoNetworkProtobuf"' "$repo_root/Package.swift"
+require_contains '.product(name: "InnoNetwork-Protobuf", package: "InnoNetwork-Protobuf")' "$readme"
 require_contains "InnoNetwork" "$readme"
 require_contains "Protocol Buffers" "$readme"
 require_contains "protobufRequest" "$readme"
