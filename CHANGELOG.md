@@ -10,6 +10,9 @@ The format is based on Keep a Changelog. Released 3.x tags remain stable while
 ### Added
 
 - Explicit `sessionAuthentication` intent on every `ProtobufAPIDefinition`.
+- Regression tests against published InnoNetwork 6.0 for required/anonymous
+  authentication, binary refresh replay, cancellation, structured decoding
+  errors and idempotency-gated POST timeout retries.
 
 ### Changed
 
@@ -21,6 +24,9 @@ The format is based on Keep a Changelog. Released 3.x tags remain stable while
   and migrate retry/configuration tests to the 6.0 contracts.
 - Align the package deployment floors with InnoNetwork 6.0 and enforce Swift 6
   language mode for library, test, and documentation smoke targets.
+- Execute the independent protobuf consumer smoke in CI and release validation.
+- Distinguish the published core from the unpublished adapter in installation
+  guidance, and separate pre-tag local-adapter checks from two-tag adoption.
 
 ## [3.0.1]
 

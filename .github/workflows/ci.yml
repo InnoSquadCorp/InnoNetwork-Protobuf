@@ -130,6 +130,6 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
-      - name: Build consumer smoke package
+      - name: Build and run consumer smoke package
         working-directory: Examples/ConsumerSmoke
-        run: xcrun swift build
+        run: xcrun swift run ConsumerSmoke

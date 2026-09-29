@@ -19,9 +19,15 @@
    - `swift test`
    - docs contract sync
    - doc smoke build/run
-   - consumer smoke build
+   - consumer smoke build/run against the local adapter and remote core
    - GitHub Release creation
 6. If the tag push does not start automation, run the `Release` workflow manually with the same version string, for example `6.0.0`.
+7. After publication, resolve both remote tags from a clean external consumer
+   and verify the resolved revisions. The pre-tag local-adapter fixture is not
+   a substitute for this post-publication check.
+
+Local compatibility evidence is recorded in [COMPATIBILITY_6_0.md](COMPATIBILITY_6_0.md).
+Passing it does not authorize a push, tag, workflow dispatch or publication.
 
 ## Support Posture
 

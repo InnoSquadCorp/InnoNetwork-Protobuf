@@ -16,6 +16,7 @@ required_meta_docs=(
   "$repo_root/docs/MIGRATION_POLICY.md"
   "$repo_root/docs/ROADMAP.md"
   "$repo_root/docs/releases/6.0.0.md"
+  "$repo_root/docs/COMPATIBILITY_6_0.md"
 )
 
 fail() {
@@ -90,7 +91,7 @@ require_contains "InnoNetworkProtobuf" "$readme"
 require_contains "InnoNetwork" "$readme"
 require_contains "Protocol Buffers" "$readme"
 require_contains "protobufRequest" "$readme"
-require_contains "No 6.0 tag has been published" "$readme"
+require_contains 'InnoNetwork `6.0.0` is published.' "$readme"
 require_contains '.upToNextMajor(from: "6.0.0")' "$repo_root/Package.swift"
 require_contains 'INNONETWORK_LOCAL_PATH' "$repo_root/Package.swift"
 require_contains 'docs/releases/6.0.0.md' "$readme"

@@ -7,14 +7,16 @@ the adapter with InnoNetwork 6.0, preserves the focused protobuf public API,
 and makes authentication intent, supported platforms, and release ordering
 explicit.
 
-The release remains blocked until:
+InnoNetwork `6.0.0` is now published and resolves remotely. Local compatibility
+evidence and remaining gates are recorded in [COMPATIBILITY_6_0.md](COMPATIBILITY_6_0.md).
+The adapter release still requires:
 
-- InnoNetwork `6.0.0` resolves remotely without `INNONETWORK_LOCAL_PATH`
 - the root package and clean consumer smoke both resolve the remote dependency
 - Xcode 26 and Xcode 27 builds pass
 - iOS, macOS, tvOS, watchOS, and visionOS build gates pass
 - an annotated InnoNetworkProtobuf `6.0.0` tag points to the reviewed main
   commit
+- a post-publication clean consumer resolves both remote tags
 
 ## 6.1 Candidates
 

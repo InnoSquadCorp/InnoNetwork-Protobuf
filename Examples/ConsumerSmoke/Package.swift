@@ -30,6 +30,7 @@ let package = Package(
     dependencies: [
         innoNetworkDependency,
         .package(name: "InnoNetworkProtobuf", path: "../.."),
+        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.35.0"),
     ],
     targets: [
         .executableTarget(
@@ -37,6 +38,8 @@ let package = Package(
             dependencies: [
                 .product(name: "InnoNetwork", package: "InnoNetwork"),
                 .product(name: "InnoNetworkProtobuf", package: "InnoNetworkProtobuf"),
+                .product(name: "InnoNetworkTestSupport", package: "InnoNetwork"),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             ]
         )
     ]

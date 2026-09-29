@@ -43,9 +43,9 @@ jobs:
           xcrun swift build --target InnoNetworkProtobufDocSmoke
           xcrun swift run InnoNetworkProtobufDocSmoke
 
-      - name: Build consumer smoke package
+      - name: Build and run consumer smoke package
         working-directory: Examples/ConsumerSmoke
-        run: xcrun swift build
+        run: xcrun swift run ConsumerSmoke
 
       - name: Run tests
         run: xcrun swift test

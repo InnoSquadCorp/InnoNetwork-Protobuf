@@ -4,11 +4,11 @@
 
 It keeps protobuf request serialization and response decoding out of the core package so clients that only use JSON, form, download, or websocket features do not need to resolve `swift-protobuf`.
 
-> `main` is currently aligned with the unreleased InnoNetwork 6.0 release
-> candidate. No 6.0 tag has been published; use the 3.0.1 tag pair below for
-> the latest released line until the coordinated release completes.
+> InnoNetwork `6.0.0` is published. This adapter's 6.0 development line targets
+> that release; InnoNetworkProtobuf `6.0.0` is not yet published.
+> The latest published adapter remains `3.0.1`, paired with InnoNetwork `3.0.1`.
 
-## Installation
+## Coordinated Installation (after adapter publication)
 
 ```swift
 dependencies: [
@@ -23,10 +23,21 @@ dependencies: [
 ]
 ```
 
-The 6.0 declarations above resolve only after both coordinated tags are
-published. Until then, production applications should remain on the matching
-3.0.1 pair. Maintainers can validate the candidate against a local InnoNetwork
-checkout with:
+The declarations above require **both** published tags. Until the adapter is
+published, do not combine InnoNetworkProtobuf `3.0.1` with InnoNetwork `6.0.0`.
+Maintainers can validate this checkout against the published core without any
+local core override:
+
+```bash
+env -u INNONETWORK_LOCAL_PATH swift test
+env -u INNONETWORK_LOCAL_PATH swift run InnoNetworkProtobufDocSmoke
+env -u INNONETWORK_LOCAL_PATH swift run --package-path Examples/ConsumerSmoke ConsumerSmoke
+```
+
+The consumer fixture intentionally uses the local adapter and remote core. It
+executes a protobuf request/response through an in-memory transport; it is not
+proof that both packages are published or that a production service works.
+The optional local core override remains available for coordinated development:
 
 ```bash
 INNONETWORK_LOCAL_PATH=/path/to/InnoNetwork swift test
@@ -41,71 +52,35 @@ Add both products to the consuming target:
 
 ## Quick Start
 
+This self-contained example uses SwiftProtobuf's generated well-known messages.
+Replace them with your own `protoc`-generated message types in an application.
+If your target imports `SwiftProtobuf`, declare its package and product directly
+(the adapter supports `swift-protobuf` from `1.35.0`).
+
 ```swift
 import Foundation
 import InnoNetwork
 import InnoNetworkProtobuf
 import SwiftProtobuf
 
-struct GetUserRequest: SwiftProtobuf.Message, Sendable {
-    var userID: Int32 = 0
-    var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    init() {}
-
-    static let protoMessageName = "GetUserRequest"
-
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        while let fieldNumber = try decoder.nextFieldNumber() {
-            switch fieldNumber {
-            case 1: try decoder.decodeSingularInt32Field(value: &userID)
-            default: break
-            }
-        }
-    }
-
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        if userID != 0 {
-            try visitor.visitSingularInt32Field(value: userID, fieldNumber: 1)
-        }
-        try unknownFields.traverse(visitor: &visitor)
-    }
-}
-
-struct GetUserResponse: SwiftProtobuf.Message, Sendable {
-    var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    init() {}
-
-    static let protoMessageName = "GetUserResponse"
-
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        while try decoder.nextFieldNumber() != nil {}
-    }
-
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        try unknownFields.traverse(visitor: &visitor)
-    }
-}
-
-struct GetUser: ProtobufAPIDefinition {
-    typealias Parameter = GetUserRequest
-    typealias APIResponse = GetUserResponse
+struct GetValue: ProtobufAPIDefinition {
+    typealias Parameter = Google_Protobuf_Int32Value
+    typealias APIResponse = Google_Protobuf_StringValue
 
     var method: HTTPMethod { .post }
-    var path: String { "/users.protobuf" }
+    var path: String { "/values.protobuf" }
     var sessionAuthentication: SessionAuthentication { .anonymous }
-    let parameters: GetUserRequest?
+    let parameters: Google_Protobuf_Int32Value?
 }
 
+var input = Google_Protobuf_Int32Value()
+input.value = 42
 let client = DefaultNetworkClient(
     configuration: .safeDefaults(baseURL: URL(string: "https://api.example.com")!)
 )
 
-let response = try await client.protobufRequest(
-    GetUser(parameters: GetUserRequest(userID: 1))
-)
-print(response)
+let response = try await client.protobufRequest(GetValue(parameters: input))
+print(response.value)
 ```
 
 ## Public Surface
@@ -123,11 +98,20 @@ print(response)
 
 - GET requests with protobuf parameters are rejected. Binary protobuf payloads are body-only.
 - For `204 No Content` or empty responses, use `ProtobufEmptyResponse` or a custom type conforming to `HTTPEmptyResponseMessage`.
-- Released `3.0.1` remains paired with `InnoNetwork` `3.0.1`. The 6.0 candidate
+- Released `3.0.1` remains paired with `InnoNetwork` `3.0.1`. The 6.0 adapter
   requires InnoNetwork `6.0.0..<7.0.0`, and its tag must be published only
   after the InnoNetwork 6.0.0 tag resolves remotely.
 - Every protobuf endpoint declares `sessionAuthentication` explicitly so a
   migration cannot silently change whether refresh-token policy runs.
+- `.required` fails before transport without a token policy; `.anonymous`
+  bypasses the policy. Authentication replay preserves the binary request body.
+- Errors remain InnoNetwork's typed `NetworkError` values, including
+  `.decoding(stage: .responseBody, underlying:response:)` and `.cancelled`.
+- Unsafe POST timeout retries require an `Idempotency-Key` with the default
+  retry safety policy. Do not opt into method-agnostic retries without owning
+  duplicate-write protection.
+- This compatibility update keeps the public `protobufRequest` surface. It does
+  not add protobuf-specific operation handles, gRPC, or new codec policies.
 
 ## Stability
 
@@ -135,6 +119,7 @@ print(response)
 - Release rules: [docs/RELEASE_POLICY.md](docs/RELEASE_POLICY.md)
 - Migration notes: [docs/MIGRATION_POLICY.md](docs/MIGRATION_POLICY.md)
 - Draft 6.0 release notes: [docs/releases/6.0.0.md](docs/releases/6.0.0.md)
+- Local 6.0 compatibility evidence: [docs/COMPATIBILITY_6_0.md](docs/COMPATIBILITY_6_0.md)
 
 ## Support
 

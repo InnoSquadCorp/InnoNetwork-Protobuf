@@ -261,7 +261,7 @@ struct ProtobufNetworkClientTests {
         }
     }
 
-    @Test("Network error throws NetworkError.underlying")
+    @Test("Offline error uses InnoNetwork 6 structured reachability")
     func protobufNetworkError() async throws {
         let mockSession = MockURLSession()
         mockSession.mockError = URLError(.notConnectedToInternet)
@@ -271,8 +271,12 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(GetUserProtobuf(userID: 1))
+        do {
+            _ = try await client.protobufRequest(GetUserProtobuf(userID: 1))
+            Issue.record("Offline request unexpectedly succeeded")
+        } catch NetworkError.reachability(let reason, let underlying, _) {
+            #expect(reason == .notConnectedToInternet)
+            #expect(underlying.code == URLError.notConnectedToInternet.rawValue)
         }
     }
 
