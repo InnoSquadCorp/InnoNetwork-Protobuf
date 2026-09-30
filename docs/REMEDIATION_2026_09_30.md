@@ -28,6 +28,13 @@ download journal numeric recovery (`73b105b`), new error/example/enum integratio
 root-adjacent hygiene commit; no finding is counted twice as a separate fix.
 The core's `docs/REMEDIATION_2026_09_30.md` contains the detailed closure matrix.
 
+Final core validation additionally found an omitted compiler-host entry in the
+DocC product ledger (F10). Core `cf8b43b` adds the entry and real-manifest-bound
+positive/negative fixture controls. The actual ten-product archive check passes.
+This changes only a product-list document and a shell test, not the Swift source
+pair above; the core report preserves the initial failed preflight and the
+targeted continuation evidence.
+
 ## Compatibility decision
 
 Direct `#if` members are rejected by both endpoint macros before inference,
