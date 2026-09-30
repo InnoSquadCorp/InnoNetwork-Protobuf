@@ -2,6 +2,8 @@
 
 ## Unreleased — 6.0 binary contract redesign
 
+- Add a standalone macro-first iOS validation app and macOS CLI sharing seven
+  real-transport/cache scenarios, with cold-launch and process-relaunch evidence.
 - Breaking: replace adapter endpoint/client SPI with core 6.1 EncodedRequest factories.
 - Remove hand-written Empty message; use generated Empty or explicit HTTP no-content.
 - Adopt application/protobuf, explicit legacy/missing-header compatibility, depth and byte budgets.

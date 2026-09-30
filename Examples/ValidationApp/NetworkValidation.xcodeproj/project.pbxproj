@@ -1,0 +1,27 @@
+// !$*UTF8*$!
+{
+    archiveVersion = 1;
+    classes = {};
+    objectVersion = 60;
+    objects = {
+        A00000000000000000000001 = { isa = PBXProject; attributes = { LastUpgradeCheck = 2700; }; buildConfigurationList = A00000000000000000000010; compatibilityVersion = "Xcode 15.0"; developmentRegion = en; knownRegions = (en, Base); mainGroup = A00000000000000000000002; packageReferences = (A00000000000000000000020); productRefGroup = A00000000000000000000003; projectDirPath = ""; projectRoot = ""; targets = (A00000000000000000000004); };
+        A00000000000000000000002 = { isa = PBXGroup; children = (A00000000000000000000005, A00000000000000000000003); sourceTree = "<group>"; };
+        A00000000000000000000003 = { isa = PBXGroup; children = (A00000000000000000000006); name = Products; sourceTree = "<group>"; };
+        A00000000000000000000004 = { isa = PBXNativeTarget; buildConfigurationList = A00000000000000000000011; buildPhases = (A00000000000000000000007, A00000000000000000000008); buildRules = (); dependencies = (); name = NetworkValidation; packageProductDependencies = (A00000000000000000000021); productName = NetworkValidation; productReference = A00000000000000000000006; productType = "com.apple.product-type.application"; };
+        A00000000000000000000005 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/NetworkValidationApp.swift; sourceTree = "<group>"; };
+        A00000000000000000000006 = { isa = PBXFileReference; explicitFileType = wrapper.application; path = NetworkValidation.app; sourceTree = BUILT_PRODUCTS_DIR; };
+        A00000000000000000000007 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000009); runOnlyForDeploymentPostprocessing = 0; };
+        A00000000000000000000008 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A00000000000000000000022); runOnlyForDeploymentPostprocessing = 0; };
+        A00000000000000000000009 = { isa = PBXBuildFile; fileRef = A00000000000000000000005; };
+        A00000000000000000000010 = { isa = XCConfigurationList; buildConfigurations = (A00000000000000000000012, A00000000000000000000013); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        A00000000000000000000011 = { isa = XCConfigurationList; buildConfigurations = (A00000000000000000000014, A00000000000000000000015); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        A00000000000000000000012 = { isa = XCBuildConfiguration; name = Debug; buildSettings = { SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 18.0; SWIFT_VERSION = 6.0; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; DEBUG_INFORMATION_FORMAT = dwarf; }; };
+        A00000000000000000000013 = { isa = XCBuildConfiguration; name = Release; buildSettings = { SDKROOT = iphoneos; IPHONEOS_DEPLOYMENT_TARGET = 18.0; SWIFT_VERSION = 6.0; SWIFT_COMPILATION_MODE = wholemodule; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; }; };
+        A00000000000000000000014 = { isa = XCBuildConfiguration; name = Debug; buildSettings = { CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = App/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.innosquad.network.validation; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; }; };
+        A00000000000000000000015 = { isa = XCBuildConfiguration; name = Release; buildSettings = { CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = App/Info.plist; PRODUCT_BUNDLE_IDENTIFIER = com.innosquad.network.validation; PRODUCT_NAME = "$(TARGET_NAME)"; TARGETED_DEVICE_FAMILY = "1,2"; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; }; };
+        A00000000000000000000020 = { isa = XCLocalSwiftPackageReference; relativePath = .; };
+        A00000000000000000000021 = { isa = XCSwiftPackageProductDependency; package = A00000000000000000000020; productName = ValidationKit; };
+        A00000000000000000000022 = { isa = PBXBuildFile; productRef = A00000000000000000000021; };
+    };
+    rootObject = A00000000000000000000001;
+}

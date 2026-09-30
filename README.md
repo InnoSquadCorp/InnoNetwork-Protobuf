@@ -1,5 +1,10 @@
 # InnoNetwork-Protobuf
 
+The standalone [validation app](Examples/ValidationApp/README.md) exercises the
+unpublished macro-first candidate through real URLSession sockets and persistent
+sandbox storage. Its local-pair/device results are not published-dependency or
+production-service certification.
+
 Endpoint macros reject member-level `#if` declarations so that body, query and
 request policies cannot silently disappear. Put `#if` around the complete
 endpoint declaration, or use the manual `EncodedAPIDefinition` contract.
