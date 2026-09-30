@@ -1,5 +1,6 @@
 // swift-tools-version: 6.2
 
+import CompilerPluginSupport
 import Foundation
 import PackageDescription
 
@@ -19,12 +20,14 @@ if let localInnoNetworkPath = ProcessInfo.processInfo.environment[
     )
     innoNetworkDependency = .package(
         name: "InnoNetwork",
-        path: localInnoNetworkPath
+        path: localInnoNetworkPath,
+        traits: []
     )
 } else {
     innoNetworkDependency = .package(
         url: "https://github.com/InnoSquadCorp/InnoNetwork.git",
-        .upToNextMajor(from: "6.0.0")
+        .upToNextMinor(from: "6.1.0"),
+        traits: []
     )
 }
 
@@ -35,7 +38,7 @@ let package = Package(
         .macOS(.v14),
         .tvOS(.v16),
         .watchOS(.v9),
-        .visionOS(.v1)
+        .visionOS(.v1),
     ],
     products: [
         .library(
@@ -48,14 +51,29 @@ let package = Package(
             targets: ["InnoNetworkProtobuf"]
         ),
     ],
+    traits: [
+        .trait(name: "Macros", description: "Enables @ProtobufAPIDefinition declarations."),
+        .default(enabledTraits: ["Macros"]),
+    ],
     dependencies: [
-        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.35.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", .upToNextMinor(from: "603.0.1")),
+        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.1"),
         innoNetworkDependency,
     ],
     targets: [
+        .macro(
+            name: "InnoNetworkProtobufMacros",
+            dependencies: [
+                .product(name: "InnoNetworkMacroSupport", package: "InnoNetwork"),
+                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+                .product(name: "SwiftDiagnostics", package: "swift-syntax"),
+            ], swiftSettings: strictSettings),
         .target(
             name: "InnoNetworkProtobuf",
             dependencies: [
+                .target(name: "InnoNetworkProtobufMacros", condition: .when(traits: ["Macros"])),
                 .product(name: "InnoNetwork", package: "InnoNetwork"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
             ],
@@ -70,6 +88,23 @@ let package = Package(
             ],
             path: "SmokeTests/InnoNetworkProtobufDocSmoke",
             swiftSettings: strictSettings
+        ),
+        .target(
+            name: "MacroPlatformSmoke",
+            dependencies: [
+                "InnoNetworkProtobuf", .product(name: "InnoNetwork", package: "InnoNetwork"),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+            ],
+            path: "SmokeTests/MacroPlatformSmoke", swiftSettings: strictSettings
+        ),
+        .testTarget(
+            name: "InnoNetworkProtobufMacroTests",
+            dependencies: [
+                .target(name: "InnoNetworkProtobufMacros", condition: .when(platforms: [.macOS], traits: ["Macros"])),
+                .product(
+                    name: "SwiftSyntaxMacrosTestSupport", package: "swift-syntax",
+                    condition: .when(platforms: [.macOS], traits: ["Macros"])),
+            ], swiftSettings: strictSettings
         ),
         .testTarget(
             name: "InnoNetworkProtobufTests",

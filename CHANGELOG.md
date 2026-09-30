@@ -1,11 +1,24 @@
 # Changelog
 
+## Unreleased — 6.0 binary contract redesign
+
+- Breaking: replace adapter endpoint/client SPI with core 6.1 EncodedRequest factories.
+- Remove hand-written Empty message; use generated Empty or explicit HTTP no-content.
+- Adopt application/protobuf, explicit legacy/missing-header compatibility, depth and byte budgets.
+- Normalize codec failures and share core retry/cancellation/operation behavior.
+- Require SwiftProtobuf 1.38.1 and core 6.1.x; enable the adapter Macros trait by default.
+- Add @ProtobufAPIDefinition, ordinary query encoding, optional message bodies,
+  explicit no-content response mode, mixed JSON/protobuf and macro-off consumers.
+- Share route/auth/declaration validation through compiler-host support; no SPI
+  execution, fake Codable, duplicate transport engine or global macro trust bypass.
+- Harden release version/tag/SHA/Ready gates, negative fixtures, validation-only default and minimal permissions.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog. Released 3.x tags remain stable while
-`main` prepares the coordinated 6.0 line alongside InnoNetwork 6.0.
+`main` prepares the coordinated 6.0 line alongside InnoNetwork 6.1.
 
-## [Unreleased]
+## Superseded unpublished SPI proposal (historical)
 
 ### Added
 

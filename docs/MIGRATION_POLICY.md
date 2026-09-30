@@ -17,12 +17,10 @@
 ## 3.0.1 to 6.0.0
 
 - Upgrade `InnoNetwork` and `InnoNetwork-Protobuf` as a coordinated pair.
-- Every `ProtobufAPIDefinition` must explicitly provide
-  `sessionAuthentication`; use `.anonymous` only for endpoints that truly do
-  not participate in authenticated-session recovery.
-- Protobuf request execution intentionally uses InnoNetwork's
-  `GeneratedClientSupport` SPI. Applications should consume the public
-  `protobufRequest` API rather than importing that SPI themselves.
+- Use the core 6.1 encoded-request contract, with explicit authentication on
+  every factory. No SPI import or Protobuf-specific client is required.
+- The prior development API is replaced, not retained as a second execution
+  contract. Follow [the complete migration table](MIGRATION_6_0.md).
 - The 6.0 line supports iOS 16, macOS 14, tvOS 16, watchOS 9, and visionOS 1,
   matching the core package floors.
 

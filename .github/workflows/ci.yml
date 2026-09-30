@@ -11,6 +11,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     name: Build and Test — Xcode ${{ matrix.xcode.label }}
@@ -29,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Select Xcode
         run: sudo xcode-select -s ${{ matrix.xcode.path }}
@@ -48,6 +51,9 @@ jobs:
       - name: Test
         run: xcrun swift test
 
+      - name: Compile macro contracts
+        run: ruby Scripts/check_macro_compile_failures.rb
+
   apple-platform-builds:
     name: Build — ${{ matrix.runtime }}
     runs-on: macos-15
@@ -58,7 +64,7 @@ jobs:
         include:
           - runtime: iOS
             sdk: iphonesimulator
-            destination: generic/platform=iOS Simulator
+            triple: arm64-apple-ios16.0-simulator
           - runtime: tvOS
             sdk: appletvos
             triple: arm64-apple-tvos16.0
@@ -71,7 +77,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -80,19 +86,12 @@ jobs:
         run: xcrun --sdk '${{ matrix.sdk }}' --show-sdk-path
 
       - name: Build ${{ matrix.runtime }}
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+          SDK: ${{ matrix.sdk }}
+          TRIPLE: ${{ matrix.triple }}
         run: |
-          if [[ '${{ matrix.runtime }}' == 'iOS' ]]; then
-            xcodebuild \
-              -scheme InnoNetwork-Protobuf-Package \
-              -destination '${{ matrix.destination }}' \
-              CODE_SIGNING_ALLOWED=NO \
-              build
-          else
-            bash Scripts/build_apple_platform_target.sh \
-              '${{ matrix.runtime }}' \
-              '${{ matrix.sdk }}' \
-              '${{ matrix.triple }}'
-          fi
+          bash Scripts/build_apple_platform_target.sh "$RUNTIME" "$SDK" "$TRIPLE"
 
   docs-contract-sync:
     name: Docs / Contract Sync
@@ -101,7 +100,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -110,7 +109,9 @@ jobs:
         run: xcrun swift package resolve
 
       - name: Verify docs and stability contract
-        run: bash Scripts/check_docs_contract_sync.sh
+        run: |
+          bash Scripts/check_docs_contract_sync.sh
+          ruby Scripts/test_release_gate.rb
 
       - name: Build documentation smoke target
         run: xcrun swift build --target InnoNetworkProtobufDocSmoke
@@ -125,7 +126,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -135,3 +136,6 @@ jobs:
         run: |
           xcrun swift run ConsumerSmoke
           xcrun swift run LegacyConsumerSmoke
+
+      - name: Verify macro-disabled consumer graph
+        run: bash Scripts/check_macro_disabled_consumer.sh

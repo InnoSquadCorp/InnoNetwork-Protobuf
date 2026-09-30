@@ -1,5 +1,9 @@
 # InnoNetwork 6.0 compatibility
 
+> Historical evidence for the superseded SPI adapter, before the approved
+> breaking redesign. It does **not** validate the current encoded-request API
+> against published core 6.0. See [current implementation evidence](IMPLEMENTATION_6_0.md).
+
 Status: local compatibility validation passed on 2026-09-30 (Asia/Seoul);
 adapter not published.
 

@@ -2,60 +2,26 @@
 
 ## 6.0 Release Boundary
 
-The 6.0 release is a compatibility reset, not a feature expansion. It aligns
-the adapter with InnoNetwork 6.0, preserves the focused protobuf public API,
-and makes authentication intent, supported platforms, and release ordering
-explicit.
+The approved breaking redesign includes public core encoded requests, shared
+operations/cancellation, explicit HTTP empty semantics, configurable binary codec,
+standard media negotiation, resource budgets and hardened release validation.
+It supersedes the earlier SPI-only compatibility reset and absorbs the former
+encoding/decoding/media/generated-client candidates. Core 6.1 must ship first.
 
-InnoNetwork `6.0.0` is now published and resolves remotely. Local compatibility
-evidence and remaining gates are recorded in [COMPATIBILITY_6_0.md](COMPATIBILITY_6_0.md).
-The adapter release still requires:
+## Remaining gates
 
-- the root package and clean consumer smoke both resolve the remote dependency
-- Xcode 26 and Xcode 27 builds pass
-- iOS, macOS, tvOS, watchOS, and visionOS build gates pass
-- an annotated InnoNetwork-Protobuf `6.0.0` tag points to the reviewed main
-  commit
-- a post-publication clean consumer resolves both remote tags
+- Local core and adapter regression/integration/platform evidence.
+- Reviewed and published core 6.1; remote-only minimum/latest dependency checks.
+- Exact adapter candidate Xcode 26/27 CI, five platforms, Ready notes and annotated tag.
+- Separate publication approval, then both-remote-tag consumer verification.
 
-## 6.1 Candidates
+## Optional follow-ups
 
-Candidates are intentionally ordered by consumer value and contract risk.
-None is part of the 6.0 release contract.
+- Upstream-supported pre-allocation encoder cap if a concrete consumer needs one.
+- Dedicated protobuf throughput/peak-memory performance baselines with realistic schemas.
+- Application-specific exporters consuming core's payload-free codec measurements.
 
-1. **Configurable binary decoding policy**
-   - expose a small package-owned value that can set SwiftProtobuf's message
-     depth limit and unknown-field behavior per endpoint
-   - retain the current defaults so existing endpoints do not change behavior
-   - add malformed and deeply nested payload tests before making it stable
-2. **Configurable binary encoding policy**
-   - allow endpoints that need repeatable map ordering to opt into
-     `BinaryEncodingOptions.useDeterministicOrdering`
-   - document that SwiftProtobuf deterministic output is not a cross-language
-     canonicalization or signing format
-3. **Protobuf content negotiation profile**
-   - keep `application/x-protobuf` as the default
-   - evaluate an explicit opt-in for `application/protobuf` and a matching
-     `Accept` header without introducing free-form duplicated header logic
-4. **Payload observability without payload logging**
-   - report encoded and decoded byte counts through InnoNetwork metrics hooks
-   - never log binary bodies or generated message descriptions by default
-5. **Generated-client ergonomics**
-   - evaluate a narrowly scoped adapter for generated protobuf endpoints so
-     application targets do not import `GeneratedClientSupport` directly
-   - keep the SPI dependency internal to this package
+## Out of scope
 
-## Explicitly Out of Scope for 6.1
-
-- gRPC framing, HTTP/2 stream management, and bidirectional RPC
-- schema registry or code generation ownership
-- canonical serialization for signatures or persistent fingerprints
-
-Those concerns require separate packages or contracts and should not be folded
-into the HTTP protobuf body adapter implicitly.
-
-## Promotion Gate
-
-A 6.1 candidate becomes implementation work only after it has a concrete
-consumer, an API sketch, compatibility tests, and a clear ownership boundary
-between SwiftProtobuf, InnoNetwork, and this adapter.
+gRPC, streaming RPC, schema registries, generator ownership and canonical
+serialization are separate contracts, not implicit features of this HTTP adapter.

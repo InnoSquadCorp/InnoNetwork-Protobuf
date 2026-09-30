@@ -4,38 +4,36 @@ import InnoNetworkProtobuf
 import InnoNetworkTestSupport
 import SwiftProtobuf
 
-// Generated well-known messages keep this example self-contained. Applications
-// can use their own protoc-generated Message types with the same endpoint shape.
-struct GetValue: ProtobufAPIDefinition {
-    typealias Parameter = Google_Protobuf_Int32Value
-    typealias APIResponse = Google_Protobuf_StringValue
-
-    var method: HTTPMethod { .post }
-    var path: String { "/values.protobuf" }
-    var sessionAuthentication: SessionAuthentication { .anonymous }
-    let parameters: Google_Protobuf_Int32Value?
+@APIDefinition(method: .get, path: "/json", auth: .anonymous)
+struct JSONEndpoint {
+    typealias APIResponse = JSONReply
 }
-
-var input = Google_Protobuf_Int32Value()
-input.value = 42
-var output = Google_Protobuf_StringValue()
-output.value = "protobuf-6"
+struct JSONReply: Codable, Sendable { let value: String }
+public enum ProtobufRoutes {
+    @ProtobufAPIDefinition(method: .post, path: "/echo", auth: .anonymous)
+    public struct Echo {
+        public typealias APIResponse = Google_Protobuf_StringValue
+        public let body: Google_Protobuf_StringValue
+    }
+}
+var message = Google_Protobuf_StringValue()
+message.value = "external consumer"
+let request = ProtobufRoutes.Echo(body: message)
 let session = MockURLSession()
-session.setMockResponse(statusCode: 200, data: try output.serializedData())
-
+session.setScriptedResponses([
+    .http(
+        statusCode: 200, data: try message.serializedData(),
+        headers: ["Content-Type": "application/protobuf"]),
+    .http(statusCode: 200, data: Data(#"{"value":"json"}"#.utf8), headers: ["Content-Type": "application/json"]),
+])
 let client = DefaultNetworkClient(
-    configuration: .safeDefaults(baseURL: URL(string: "https://api.example.com")!),
-    session: session
-)
-
-let response = try await client.protobufRequest(GetValue(parameters: input))
-precondition(response.value == "protobuf-6")
-precondition(session.capturedRequestsInOrder.count == 1)
-precondition(session.capturedRequest?.httpMethod == "POST")
-precondition(session.capturedRequest?.url?.path == "/values.protobuf")
-precondition(session.capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/x-protobuf")
-precondition(session.capturedRequest?.value(forHTTPHeaderField: "Authorization") == nil)
-let sent = try Google_Protobuf_Int32Value(serializedBytes: session.capturedRequest?.httpBody ?? Data())
-precondition(sent.value == 42)
-
-print("ConsumerSmoke OK: protobuf request/response against remote InnoNetwork 6")
+    configuration: .safeDefaults(baseURL: URL(string: "https://example.com")!), session: session)
+let operation = OperationNetworkClient(client: client).start(request)
+let result = try await operation.value()
+precondition(result == message)
+let encoded = try message.serializedData()
+precondition(session.capturedRequest?.httpBody == encoded)
+let json = try await client.request(JSONEndpoint())
+precondition(json.value == "json")
+await client.shutdown()
+print("ConsumerSmoke OK: public nested protobuf macro, operation, JSON macro coexistence")

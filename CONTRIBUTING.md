@@ -23,7 +23,7 @@ swift run --package-path Examples/ConsumerSmoke LegacyConsumerSmoke
 - Keep public API changes narrow and justified.
 - Update documentation when behavior or contracts change.
 - Add or update tests for any user-visible behavior.
-- Keep examples aligned with `DefaultNetworkClient` plus `ProtobufAPIDefinition`.
+- Keep examples aligned with `EncodedRequest.protobuf` and core `EncodedRequestClient` / `OperationNetworkClient`.
 - Document any required matching `InnoNetwork` version or branch.
 
 ## Public API Policy

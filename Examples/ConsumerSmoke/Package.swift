@@ -14,7 +14,7 @@ if let localInnoNetworkPath = ProcessInfo.processInfo.environment[
 } else {
     innoNetworkDependency = .package(
         url: "https://github.com/InnoSquadCorp/InnoNetwork.git",
-        .upToNextMajor(from: "6.0.0")
+        .upToNextMajor(from: "6.1.0")
     )
 }
 
@@ -25,14 +25,23 @@ let package = Package(
         .macOS(.v14),
         .tvOS(.v16),
         .watchOS(.v9),
-        .visionOS(.v1)
+        .visionOS(.v1),
     ],
     dependencies: [
         innoNetworkDependency,
         .package(name: "InnoNetwork-Protobuf", path: "../.."),
-        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.35.0"),
+        .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.1"),
     ],
     targets: [
+        .executableTarget(
+            name: "CodecBenchmarks",
+            dependencies: [
+                .product(name: "InnoNetwork", package: "InnoNetwork"),
+                .product(name: "InnoNetwork-Protobuf", package: "InnoNetwork-Protobuf"),
+                .product(name: "InnoNetworkTestSupport", package: "InnoNetwork"),
+                .product(name: "SwiftProtobuf", package: "swift-protobuf"),
+            ]
+        ),
         .executableTarget(
             name: "ConsumerSmoke",
             dependencies: [

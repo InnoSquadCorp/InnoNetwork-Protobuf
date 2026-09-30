@@ -1,35 +1,48 @@
 # API Stability
 
-This document defines the compatibility contract for the public OSS release of `InnoNetwork-Protobuf` (Swift module `InnoNetworkProtobuf`).
+This ledger describes the unpublished 6.0 redesign, not the released 3.x API.
+No GeneratedClientSupport SPI is imported by this package.
 
 ## Stable
 
-- `ProtobufAPIDefinition`
-- `ProtobufNetworkClient`
-- `ProtobufEmptyResponse`
-- `HTTPEmptyResponseMessage`
-- `AnyResponseDecoder.protobuf()`
-- `AnyResponseDecoder.protobufEmptyCapable()`
+- `ProtobufMediaType`
+- `ProtobufCodingOptions`
+- `EncodedRequest.protobuf(method:path:auth:body:codec:options:)`
+- `EncodedRequest.protobuf(method:path:auth:codec:options:)`
+- `EncodedRequest.protobufNoContent(method:path:auth:body:codec:options:)`
+- `EncodedRequest.protobufNoContent(method:path:auth:codec:options:)`
+- `EncodedRequestBody.protobuf(_:options:)`
+- `AnyResponseDecoder.protobuf(options:)`
 
 ## Provisionally Stable
 
-- package dependency requirements on `InnoNetwork`
-- installation guidance in the README
-- smoke examples and troubleshooting guidance
+- `ProtobufResponseMode` and `@ProtobufAPIDefinition(method:path:auth:response:)`:
+  candidate surface pending both Xcode 26 and 27 external-compiler validation.
+- The body factory includes a typed optional-message overload. Nil is absent;
+  a present zero-byte message remains an HTTP body.
+- Dependency minimums and local coordinated-development override.
+- Runnable consumer examples and release tooling.
 
 ## Internal/Operational
 
-- protobuf adapter execution internals
-- SPI imports used to bridge into `InnoNetwork`
-- local workspace dependency wiring before the matching `InnoNetwork` release ships
-- test support utilities and CI workflow structure
+- Media-header parser and option merging implementation.
+- Build artifact layout and test helpers.
 
-## Notes
+## Contract
 
-- The preferred package product is `InnoNetwork-Protobuf`; the compatibility
-  product `InnoNetworkProtobuf` remains available. Both expose the same module
-  and preserve `import InnoNetworkProtobuf`.
-- Stable items follow semantic versioning once the package is published.
-- `ProtobufAPIDefinition.sessionAuthentication` is a required security witness;
-  endpoint declarations cannot inherit an implicit authentication mode.
-- `InnoNetwork` remains the source of truth for `DefaultNetworkClient`, transport behavior, retry behavior, and trust policy.
+Stable compatibility begins with publication of this major. Request execution,
+typed NetworkError, operation lifecycle and HTTP no-content belong to core 6.1+.
+Every factory requires explicit `auth`. Default media validation is strict;
+legacy/missing response headers require explicit codec policy. Byte quotas are
+not promises about peak encoder memory. Generated message unknown fields retain
+SwiftProtobuf equality/serialization semantics.
+
+Removed in this major: the old `ProtobufAPIDefinition` **protocol**, `ProtobufNetworkClient`,
+`protobufRequest`, `ProtobufEmptyResponse`, `HTTPEmptyResponseMessage`, and
+`protobufEmptyCapable`. See [migration](docs/MIGRATION_6_0.md).
+Both product names still export the `InnoNetworkProtobuf` module.
+The new macro shares the old protocol's spelling, but generates core
+`EncodedAPIDefinition` conformance and cannot be used as a protocol constraint.
+`Macros` is enabled by default; disabling it removes macro declarations but
+retains manual factories and runtime behavior. SwiftSyntax 603.0.x and
+`InnoNetworkMacroSupport` are compiler-host dependencies, not app runtime APIs.
