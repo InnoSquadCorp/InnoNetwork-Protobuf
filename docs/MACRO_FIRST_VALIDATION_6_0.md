@@ -3,6 +3,11 @@
 Date: 2026-09-30. Status: local implementation and scoped validation complete;
 publication gates pending, not published or release-ready.
 
+Historical implementation evidence follows. The subsequent expanded review,
+authorized fixes and local commits are tracked in
+[Review remediation](REMEDIATION_2026_09_30.md); do not treat the uncommitted
+revision labels below as the current final candidate.
+
 ## Revision and authority
 
 The maintainer approved sequential local execution of `MACRO_FIRST_PLAN_6_0.md`.
