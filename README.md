@@ -23,6 +23,12 @@ local development. Published adapter 3.0.1 belongs with its documented core 3.x.
 See [migration](docs/MIGRATION_6_0.md), [release gates](docs/releases/6.0.0.md), and
 [current macro-first validation](docs/MACRO_FIRST_VALIDATION_6_0.md).
 
+The **Paired Candidate (not public release)** workflow checks the immutable core
+revision in `.github/core-candidate.sha` on Xcode 26/27. It also runs the real
+loopback sample in cold and warm processes. This additional lane does not change
+normal CI or the public-dependency release gate: those still require a published
+core 6.1 tag. See [current pre-release evidence](docs/PRE_RELEASE_APP_VALIDATION_2026_09_30.md).
+
 After both new tags are published:
 
 ```swift

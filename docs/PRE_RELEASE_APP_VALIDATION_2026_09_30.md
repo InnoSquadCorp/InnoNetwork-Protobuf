@@ -1,6 +1,7 @@
 # Candidate app validation — 2026-09-30
 
-Status: local device verification complete; final pre-release/remote results pending.
+Status: local device verification and core full preflight complete; exact-pair
+remote CI and public-dependency release gates remain pending.
 Core input was `7d46c68`, followed by cache telemetry hardening `d1b4d93`.
 Adapter input was `35d30a8`; production adapter code is unchanged by the sample.
 This is the unpublished core 6.1 / adapter 6.0 pair, not a new 6.0 core release.
@@ -16,6 +17,9 @@ diagnostic fixture, not for user credentials or application production traffic.
 Fresh macOS CLI cold and second-process warm runs: **7/7 pass each**.
 Fresh physical iPhone 14 Pro Max, iOS 27.0.1 (24A446), signed Debug app:
 **7/7 pass on cold launch and 7/7 after terminating/relaunching the process**.
+The final formatted source (`c45ea73`) was then rebuilt, reinstalled and verified
+again: **7/7 pass**, including zero-network restoration. Core runtime source was
+`d1b4d93`; later evidence-only documentation changes do not change that binary.
 
 | Scenario | Assertion |
 | --- | --- |
@@ -28,7 +32,8 @@ Fresh physical iPhone 14 Pro Max, iOS 27.0.1 (24A446), signed Debug app:
 | Telemetry | 63 evictions become one aggregate; draining resets retained totals |
 
 The actual signed device app was installed and launched. Exported synthetic
-reports are `device-cold-report.json` and `device-warm-report.json` under the core
+reports are `device-cold-report.json`, `device-warm-report.json` and
+`device-final-report.json` under the core
 checkout's ignored `.build/pre-release-app-20260930/`. The screenshot showed the
 sample's green rows but also another app's picture-in-picture overlay. It was
 deleted for privacy, not committed or treated as complete UI coverage. No other
@@ -39,6 +44,17 @@ and an unavailable Cocoa error constant) were fixed in sample code; they were
 not library failures. Initial logs remain alongside corrected successful runs.
 
 ## Boundaries
+
+Fresh core full preflight against `d1b4d93` completed with exit 0, fourteen gates
+passed: consumer/generator checks, bounded and serial tests, coverage, all nineteen
+performance guards, SBOMs, ten-product DocC and five-platform SDK builds. Full
+core TSAN also passed (1,985 ordinary passes plus four explicit opt-in live skips).
+Runtime benchmark spread was wide during another repository's concurrent build;
+the core evidence record preserves that limitation and raw paired samples.
+Fresh adapter tests (43 runtime plus two macro), compiler controls (22 rejected
+and two passing), docs contracts and release-gate fixtures also pass locally.
+Older adapter platform/TSAN results are recorded separately in the remediation
+notes; they are not relabeled as fresh runs in this phase.
 
 Physical loopback requests do not certify TLS/pinning, external routing,
 background-session OS restoration, locked-device protection, a production IdP,
@@ -54,3 +70,14 @@ Remote CI must be bound to the final pushed revisions. The normal public core
 6.1 package dependency cannot resolve until that tag exists. A pinned paired
 candidate check is additional evidence only; it must not replace the release
 workflow's public-dependency gate or change its `publish: false` default.
+
+The additional `paired-candidate.yml` lane uses `.github/core-candidate.sha`,
+checks out and verifies that full immutable core SHA, and tests Xcode 26/27.
+It runs the compiler controls, external consumers, macro-off graph and two
+separate CLI processes, retaining both synthetic reports. The compatibility
+toolchain also compiles the four non-macOS platform macro targets. Standard CI
+still uses the public package requirement; no expected resolution failure is
+converted to a success, skip or `continue-on-error`.
+After the core version is published and normal public-dependency CI succeeds,
+retire this temporary pin/lane as part of release review to avoid permanent
+duplicate candidate builds.
