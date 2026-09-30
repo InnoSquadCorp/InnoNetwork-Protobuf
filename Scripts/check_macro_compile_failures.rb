@@ -63,6 +63,32 @@ cases = {
 }
 compiler = ['xcrun', 'swiftc', '-typecheck', '-swift-version', '6', '-target', "#{arch}-apple-macos14.0", '-sdk', sdk,
             '-I', bin, '-I', "#{bin}/Modules", '-load-plugin-executable', "#{plugin}#InnoNetworkProtobufMacros"]
+['os(macOS)', 'os(Linux)', 'FEATURE_FLAG'].each_with_index do |condition, index|
+  cases["conditional-members-#{index}"] = [<<~SWIFT, 'does not support conditional members']
+    @ProtobufAPIDefinition(method: .post, path: "/", auth: .anonymous)
+    struct Conditional {
+      typealias APIResponse = Google_Protobuf_Empty
+      #if #{condition}
+      let body: Google_Protobuf_Empty
+      let requestOptions: EncodedRequestOptions
+      #else
+      #if DEBUG
+      let query: String
+      #endif
+      #endif
+    }
+  SWIFT
+end
+positive += <<~SWIFT
+  #if os(macOS)
+  @ProtobufAPIDefinition(method: .post, path: "/", auth: .anonymous)
+  struct PlatformEndpoint {
+    typealias APIResponse = Google_Protobuf_Empty
+    let body: Google_Protobuf_Empty
+    var requestOptions: EncodedRequestOptions { .init(maximumResponseBytes: 8) }
+  }
+  #endif
+SWIFT
 [['positive-before', positive, nil], *cases.map { |name, (source, diagnostic)| [name, source, diagnostic] }, ['positive-after', positive, nil]].each do |name, source, expected|
   fixture = File.join(output_dir, "#{name}.swift")
   File.write(fixture, imports + source + "\n")

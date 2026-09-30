@@ -1,5 +1,9 @@
 # InnoNetwork-Protobuf
 
+Endpoint macros reject member-level `#if` declarations so that body, query and
+request policies cannot silently disappear. Put `#if` around the complete
+endpoint declaration, or use the manual `EncodedAPIDefinition` contract.
+
 Protocol Buffers over HTTP, using InnoNetwork's public encoded-request executor.
 The Swift module remains `InnoNetworkProtobuf`; the preferred library product is
 `InnoNetwork-Protobuf`. The `InnoNetworkProtobuf` product is a compatibility alias.
