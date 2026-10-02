@@ -1,25 +1,65 @@
 name: CI
+run-name: >-
+  ${{ (github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) && 'CI metadata only' || 'CI' }}
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
   push:
     branches:
       - main
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ (github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) && format('metadata-{0}', github.run_id) || (github.event.pull_request.number || github.ref) }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
+  ci-plan:
+    name: CI Plan
+    if: ${{ !(github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      plan: ${{ steps.plan.outputs.plan }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Plan exact changed paths
+        id: plan
+        run: python3 -B Scripts/ci-policy.py plan --event "$GITHUB_EVENT_PATH" --output .build/ci-plan.json
+
+  policy:
+    name: CI Policy
+    needs: ci-plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Verify planning and workflow contracts
+        run: |
+          python3 -B -m unittest discover -s Scripts/automation-tests -v
+          python3 -B Scripts/check-ci-workflows.py
+
   build-and-test:
+    needs: ci-plan
+    if: fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test
     name: Build and Test
     runs-on: macos-15
     timeout-minutes: 45
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -39,13 +79,17 @@ jobs:
         run: xcrun swift test
 
   docs-contract-sync:
+    needs: ci-plan
+    if: fromJSON(needs.ci-plan.outputs.plan).jobs.docs-contract-sync
     name: Docs / Contract Sync
     runs-on: macos-15
     timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -63,13 +107,17 @@ jobs:
         run: xcrun swift run InnoNetworkProtobufDocSmoke
 
   consumer-smoke:
+    needs: ci-plan
+    if: fromJSON(needs.ci-plan.outputs.plan).jobs.consumer-smoke
     name: Consumer Smoke
     runs-on: macos-15
     timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -77,3 +125,19 @@ jobs:
       - name: Build consumer smoke package
         working-directory: Examples/ConsumerSmoke
         run: xcrun swift build
+
+  ci-required:
+    name: ${{ (github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) && 'CI Metadata Only' || 'CI Required' }}
+    if: ${{ always() && !(github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) }}
+    needs: ['ci-plan', 'policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke']
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Require every selected validation
+        env:
+          CI_PLAN: ${{ needs.ci-plan.outputs.plan }}
+          CI_NEEDS: ${{ toJSON(needs) }}
+        run: python3 -B Scripts/ci-policy.py evaluate
