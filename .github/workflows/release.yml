@@ -48,7 +48,9 @@ jobs:
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Resolve public dependencies
-        run: env -u INNONETWORK_LOCAL_PATH xcrun swift package resolve
+        run: |
+          env -u INNONETWORK_LOCAL_PATH xcrun swift package resolve
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
       - name: Contracts and release negative controls
         run: |
           bash Scripts/check_docs_contract_sync.sh
@@ -59,6 +61,7 @@ jobs:
           xcrun swift run InnoNetworkProtobufDocSmoke
           xcrun swift run --package-path Examples/ConsumerSmoke ConsumerSmoke
           xcrun swift run --package-path Examples/ConsumerSmoke LegacyConsumerSmoke
+          ruby Scripts/check_dependency_integrity.rb Examples/ConsumerSmoke/.build Examples/ConsumerSmoke/Package.resolved
       - name: Five-platform verification (macOS above)
         run: |
           bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator

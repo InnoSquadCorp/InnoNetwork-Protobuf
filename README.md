@@ -28,6 +28,23 @@ revision in `.github/core-candidate.sha` on Xcode 26/27. It also runs the real
 loopback sample in cold and warm processes. This additional lane does not change
 normal CI or the public-dependency release gate: those still require a published
 core 6.1 tag. See [current pre-release evidence](docs/PRE_RELEASE_APP_VALIDATION_2026_09_30.md).
+The subsequent [paired-core completeness record](docs/PAIRED_CORE_COMPLETENESS_2026_10_02.md)
+tracks the newer pin, cache/decoder regressions and fresh local consumer checks.
+
+For quick local feedback, run `bash Scripts/check_static_contracts.sh`. The
+independent **Static Contracts (no dependency resolution)** CI job runs this on
+every PR, including documentation-only changes, without Swift resolution or a
+published Core tag. It does not replace compiled consumers or release validation.
+
+After SwiftPM resolution/build, run
+`ruby Scripts/check_dependency_integrity.rb <scratch-path> <Package.resolved-path>`
+to compare the active dependency graph, lockfile, Git HEADs, commit objects and
+checkout cleanliness. Candidate, consumer, macro and platform validation also
+run this guard. A corrupt/stale cache is rejected, never automatically deleted.
+Use a fresh `--scratch-path` to retain failed evidence; pass that same path through
+`PROTOBUF_VALIDATION_SCRATCH_PATH` when running the macro compiler controls.
+Local package paths are checked for consistency, not certified immutable by this
+guard; the paired workflow separately verifies Core with `check_core_candidate.rb`.
 
 After both new tags are published:
 
@@ -145,10 +162,18 @@ and success only, without a body or token. The callback is synchronous and must
 be short. Encoding is measured once per invocation, not once per retry; physical
 attempt and terminal lifecycle events continue through core observers.
 
+Cacheable malformed bytes can fail decoding again on a cache hit. See
+[explicit cache recovery](docs/CACHE_RECOVERY.md) for the opt-in freshness policy,
+macro-first executable example, and the 304/retry limitations.
+
 ## Local verification
 
 ```bash
 export INNONETWORK_LOCAL_PATH=/absolute/path/to/InnoNetwork-encoded-request
+ruby Scripts/test_core_candidate.rb
+ruby Scripts/check_core_candidate.rb "$INNONETWORK_LOCAL_PATH"
+swift package resolve
+ruby Scripts/check_core_candidate.rb "$INNONETWORK_LOCAL_PATH" .build/workspace-state.json
 swift test
 swift run InnoNetworkProtobufDocSmoke
 swift run --package-path Examples/ConsumerSmoke ConsumerSmoke
@@ -158,6 +183,14 @@ bash Scripts/check_macro_disabled_consumer.sh
 bash Scripts/check_docs_contract_sync.sh
 ruby Scripts/test_release_gate.rb
 ```
+
+For exact-pair evidence, use a clean checkout at `.github/core-candidate.sha`.
+The checker rejects another core revision, local core source changes and a stale
+active Core dependency in SwiftPM's graph. Deliberately testing other local core
+work is still possible, but must be reported as a different pair, not as
+validation of the pinned candidate.
+For an isolated compiler check, set `PROTOBUF_VALIDATION_SCRATCH_PATH` to a fresh
+build directory when invoking `Scripts/check_macro_compile_failures.rb`.
 
 This adapter enables its own `Macros` trait by default; core's JSON macro is
 independent. The mixed external consumer enables both. SwiftSyntax 603.0.x and

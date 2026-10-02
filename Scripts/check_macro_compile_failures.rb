@@ -11,8 +11,15 @@ def run!(*args)
   abort(output) unless status.success?
   output.strip
 end
-run!('swift', 'build', '--target', 'InnoNetworkProtobuf')
-bin = run!('swift', 'build', '--show-bin-path')
+build = ['swift', 'build']
+if (scratch = ENV['PROTOBUF_VALIDATION_SCRATCH_PATH'])
+  abort 'PROTOBUF_VALIDATION_SCRATCH_PATH must not be empty' if scratch.strip.empty?
+  build += ['--scratch-path', File.expand_path(scratch, root)]
+end
+run!(*build, '--target', 'InnoNetworkProtobuf')
+puts run!(RbConfig.ruby, File.join(root, 'Scripts/check_dependency_integrity.rb'),
+          scratch ? File.expand_path(scratch, root) : File.join(root, '.build'), File.join(root, 'Package.resolved'))
+bin = run!(*build, '--show-bin-path')
 plugin = ["#{bin}/InnoNetworkProtobufMacros", "#{bin}/InnoNetworkProtobufMacros-tool"].find { |path| File.executable?(path) }
 abort 'Built macro executable not found' unless plugin
 sdk = run!('xcrun', '--sdk', 'macosx', '--show-sdk-path')

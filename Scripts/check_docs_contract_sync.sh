@@ -43,4 +43,10 @@ for symbol in ProtobufCodingOptions ProtobufMediaType; do
   grep -Fq "public $(if [[ "$symbol" == ProtobufMediaType ]]; then echo enum; else echo struct; fi) $symbol" Sources/InnoNetworkProtobuf/ProtobufCodec.swift
   grep -Fq "\`$symbol\`" API_STABILITY.md
 done
+ruby -e '
+  source = File.read("Examples/ConsumerSmoke/Sources/ConsumerSmoke/CacheRecovery.swift")
+  examples = source.scan(/^\/\/ BEGIN CACHE_RECOVERY_EXAMPLE\n(.*?)^\/\/ END CACHE_RECOVERY_EXAMPLE$/m)
+  documented = File.read("docs/CACHE_RECOVERY.md").scan(/```swift\n(.*?)```/m)
+  abort "Cache recovery documentation differs from the executable consumer" unless examples.length == 1 && documented == examples
+'
 echo 'docs-contract-sync: OK'

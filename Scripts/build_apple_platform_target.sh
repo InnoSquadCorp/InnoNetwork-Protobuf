@@ -34,4 +34,6 @@ xcrun swift build \
   --sdk "$sdk_path" \
   --target MacroPlatformSmoke
 
+ruby "$repo_root/Scripts/check_dependency_integrity.rb" "$scratch_path" "$repo_root/Package.resolved"
+
 echo "Built InnoNetworkProtobuf and expanded MacroPlatformSmoke for $runtime ($target_triple)."

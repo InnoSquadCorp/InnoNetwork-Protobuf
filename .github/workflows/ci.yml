@@ -15,6 +15,14 @@ permissions:
   contents: read
 
 jobs:
+  static-contracts:
+    name: Static Contracts (no dependency resolution)
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: bash Scripts/check_static_contracts.sh
+
   build-and-test:
     name: Build and Test — Xcode ${{ matrix.xcode.label }}
     runs-on: ${{ matrix.xcode.runner }}
@@ -43,7 +51,9 @@ jobs:
           xcrun swift --version
 
       - name: Resolve dependencies
-        run: xcrun swift package resolve
+        run: |
+          xcrun swift package resolve
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
 
       - name: Build
         run: xcrun swift build
@@ -106,7 +116,9 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
       - name: Resolve dependencies
-        run: xcrun swift package resolve
+        run: |
+          xcrun swift package resolve
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
 
       - name: Verify docs and stability contract
         run: |
@@ -136,6 +148,7 @@ jobs:
         run: |
           xcrun swift run ConsumerSmoke
           xcrun swift run LegacyConsumerSmoke
+          ruby ../../Scripts/check_dependency_integrity.rb .build Package.resolved
 
       - name: Verify macro-disabled consumer graph
         run: bash Scripts/check_macro_disabled_consumer.sh

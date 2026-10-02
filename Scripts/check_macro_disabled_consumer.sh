@@ -7,6 +7,8 @@ scratch_path="$(mktemp -d "${TMPDIR:-/tmp}/protobuf-no-macros.XXXXXX")"
 echo "Retaining trait-off evidence at $scratch_path"
 swift run --package-path "$repo_root/Examples/ManualConsumerSmoke" \
   --scratch-path "$scratch_path" ManualConsumerSmoke
+ruby "$repo_root/Scripts/check_dependency_integrity.rb" "$scratch_path" \
+  "$repo_root/Examples/ManualConsumerSmoke/Package.resolved"
 if find "$scratch_path" \( -path "$scratch_path/checkouts" -o -path "$scratch_path/repositories" \
   -o -path "$scratch_path/prebuilts" \) -prune -o \( -name 'SwiftSyntax.swiftmodule' -o -name 'InnoNetworkMacroSupport.swiftmodule' \
   -o -name 'InnoNetworkMacros' -o -name 'InnoNetworkMacros-tool' \

@@ -46,8 +46,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sha=$(tr -d '\n' < .github/core-candidate.sha)
-          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          ruby Scripts/test_core_candidate.rb
+          sha=$(ruby Scripts/check_core_candidate.rb)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: Checkout exact core candidate
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -60,13 +60,16 @@ jobs:
         env:
           EXPECTED_CORE: ${{ steps.core.outputs.sha }}
         run: |
-          test "$(git -C "$INNONETWORK_LOCAL_PATH" rev-parse HEAD)" = "$EXPECTED_CORE"
+          ruby Scripts/check_core_candidate.rb "$INNONETWORK_LOCAL_PATH"
           sudo xcode-select -s '${{ matrix.xcode.path }}'
           xcodebuild -version
           xcrun swift --version
           printf 'Core: %s\nAdapter: %s\n' "$EXPECTED_CORE" "$(git rev-parse HEAD)"
       - name: Tests and compiler controls
         run: |
+          xcrun swift package resolve
+          ruby Scripts/check_core_candidate.rb "$INNONETWORK_LOCAL_PATH" .build/workspace-state.json
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
           xcrun swift test --no-parallel
           ruby Scripts/check_macro_compile_failures.rb
           bash Scripts/check_docs_contract_sync.sh
@@ -82,6 +85,10 @@ jobs:
           cp "$report_dir/latest-report.json" "$RUNNER_TEMP/candidate-cold.json"
           xcrun swift run --package-path Examples/ValidationApp ValidationCLI "$report_dir"
           cp "$report_dir/latest-report.json" "$RUNNER_TEMP/candidate-warm.json"
+          for package in . Examples/ConsumerSmoke Examples/ValidationApp; do
+            ruby Scripts/check_core_candidate.rb "$INNONETWORK_LOCAL_PATH" "$package/.build/workspace-state.json"
+            ruby Scripts/check_dependency_integrity.rb "$package/.build" "$package/Package.resolved"
+          done
       - name: Platform macro builds on the compatibility toolchain
         if: matrix.xcode.label == '26.0.1'
         run: |

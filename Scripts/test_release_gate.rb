@@ -2,17 +2,15 @@
 require 'tmpdir'
 require 'fileutils'
 require 'open3'
+require_relative 'lib/git_fixture'
 
 script = File.expand_path('check_release_gate.sh', __dir__)
 Dir.mktmpdir('protobuf-release-gate-') do |dir|
   Dir.chdir(dir) do
     def run!(*args)
-      out, status = Open3.capture2e(*args)
-      raise "#{args.inspect}: #{out}" unless status.success?
+      GitFixture.run!(*args)
     end
-    run!('git', 'init', '-q')
-    run!('git', 'config', 'user.name', 'Release Fixture')
-    run!('git', 'config', 'user.email', 'fixture@example.invalid')
+    GitFixture.create(dir)
     FileUtils.mkdir_p('docs/releases')
     File.write('docs/releases/6.0.0.md', "Release-Status: Draft\n")
     run!('git', 'add', 'docs/releases/6.0.0.md')
@@ -20,7 +18,7 @@ Dir.mktmpdir('protobuf-release-gate-') do |dir|
     run!('git', 'update-ref', 'refs/remotes/origin/main', 'HEAD')
     run!('git', 'tag', '-a', '6.0.0', '-m', 'fixture')
     check = lambda do |mode, version, expected|
-      out, status = Open3.capture2e('bash', script, mode, version)
+      out, status = Open3.capture2e(GitFixture.environment, 'bash', script, mode, version)
       raise "Unexpected result for #{mode} #{version}: #{out}" unless status.success? == expected
     end
     check.call('validate', '6.0.0', true)
