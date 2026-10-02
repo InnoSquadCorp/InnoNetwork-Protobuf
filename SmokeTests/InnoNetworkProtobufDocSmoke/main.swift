@@ -3,64 +3,30 @@ import InnoNetwork
 import InnoNetworkProtobuf
 import SwiftProtobuf
 
-private struct SmokeRequest: SwiftProtobuf.Message, Sendable {
-    var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    init() {}
-
-    static let protoMessageName: String = "SmokeRequest"
-
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        while try decoder.nextFieldNumber() != nil {}
-    }
-
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        try unknownFields.traverse(visitor: &visitor)
-    }
-
-    func isEqualTo(message: any SwiftProtobuf.Message) -> Bool {
-        guard let other = message as? SmokeRequest else { return false }
-        return unknownFields == other.unknownFields
+#if Macros
+@ProtobufAPIDefinition(method: .post, path: "/echo", auth: .anonymous)
+struct Echo {
+    typealias APIResponse = Google_Protobuf_StringValue
+    let body: Google_Protobuf_StringValue
+    var protobufOptions: ProtobufCodingOptions {
+        .init(maximumRequestBytes: 8_192, maximumResponseBytes: 8_192)
     }
 }
-
-private struct SmokeResponse: SwiftProtobuf.Message, Sendable {
-    var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    init() {}
-
-    static let protoMessageName: String = "SmokeResponse"
-
-    mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-        while try decoder.nextFieldNumber() != nil {}
-    }
-
-    func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-        try unknownFields.traverse(visitor: &visitor)
-    }
-
-    func isEqualTo(message: any SwiftProtobuf.Message) -> Bool {
-        guard let other = message as? SmokeResponse else { return false }
-        return unknownFields == other.unknownFields
-    }
-}
-
-private struct SmokeAPI: ProtobufAPIDefinition {
-    typealias Parameter = SmokeRequest
-    typealias APIResponse = SmokeResponse
-
-    var method: HTTPMethod { .post }
-    var path: String { "/protobuf" }
-    var sessionAuthentication: SessionAuthentication { .anonymous }
-    var parameters: SmokeRequest? { SmokeRequest() }
-}
-
-let client = DefaultNetworkClient(
-    configuration: .safeDefaults(baseURL: URL(string: "https://api.example.com")!)
-)
-
-_ = client
-_ = SmokeAPI()
-_ = ProtobufEmptyResponse()
-
+#endif
+var message = Google_Protobuf_StringValue()
+message.value = "hello"
+#if Macros
+let request = try Echo(body: message).makeEncodedRequest()
+#else
+let request = try EncodedRequest<Google_Protobuf_StringValue>.protobuf(
+    method: .post, path: "/echo", auth: .anonymous, body: message,
+    codec: .init(maximumRequestBytes: 8_192, maximumResponseBytes: 8_192))
+#endif
+let response = Response(
+    statusCode: 200, data: try message.serializedData(), request: nil,
+    response: HTTPURLResponse(
+        url: URL(string: "https://example.com")!, statusCode: 200,
+        httpVersion: nil, headerFields: ["Content-Type": "application/protobuf"])!)
+let decoded = try request.responseDecoder.decode(data: response.data, response: response)
+precondition(decoded == message)
 print("InnoNetworkProtobufDocSmoke OK")

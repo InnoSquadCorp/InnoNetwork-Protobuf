@@ -2,14 +2,21 @@ name: Release
 
 on:
   push:
-    tags:
-      - "*.*.*"
+    tags: ["*.*.*"]
   workflow_dispatch:
     inputs:
       version:
-        description: Release tag to validate and publish, for example 3.0.1
+        description: Existing release version (validation does not create tags)
+        default: "6.0.0"
         required: true
         type: string
+      publish:
+        description: Publish an existing annotated Ready tag after validation
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -20,73 +27,67 @@ jobs:
     name: Validate Release
     runs-on: macos-15
     timeout-minutes: 60
-    permissions:
-      contents: read
-
+    outputs:
+      sha: ${{ steps.candidate.outputs.sha }}
+      version: ${{ steps.candidate.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
-
+          fetch-depth: 0
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
-
-      - name: Resolve dependencies
-        run: xcrun swift package resolve
-
-      - name: Verify docs and stability contract
-        run: bash Scripts/check_docs_contract_sync.sh
-
-      - name: Build and run documentation smoke target
+      - name: Validate candidate and publication intent
+        id: candidate
+        env:
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
         run: |
-          xcrun swift build --target InnoNetworkProtobufDocSmoke
+          mode=validate
+          if [[ "$PUBLISH" == true ]]; then mode=publish; fi
+          bash Scripts/check_release_gate.sh "$mode" "$VERSION"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Resolve public dependencies
+        run: |
+          env -u INNONETWORK_LOCAL_PATH xcrun swift package resolve
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
+      - name: Contracts and release negative controls
+        run: |
+          bash Scripts/check_docs_contract_sync.sh
+          ruby Scripts/test_release_gate.rb
+      - name: Tests and executable examples
+        run: |
+          xcrun swift test
           xcrun swift run InnoNetworkProtobufDocSmoke
-
-      - name: Build consumer smoke package
-        working-directory: Examples/ConsumerSmoke
-        run: xcrun swift build
-
-      - name: Run tests
-        run: xcrun swift test
+          xcrun swift run --package-path Examples/ConsumerSmoke ConsumerSmoke
+          xcrun swift run --package-path Examples/ConsumerSmoke LegacyConsumerSmoke
+          ruby Scripts/check_dependency_integrity.rb Examples/ConsumerSmoke/.build Examples/ConsumerSmoke/Package.resolved
+      - name: Five-platform verification (macOS above)
+        run: |
+          bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator
+          bash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0
+          bash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0
+          bash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0
 
   publish-release:
     name: Publish Release
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
     needs: validate-release
     runs-on: ubuntu-latest
+    environment: release
     permissions:
       contents: write
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
-
-      - name: Prepare release notes
-        id: notes
-        shell: bash
-        run: |
-          set -euo pipefail
-          version="${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}"
-          notes_source="docs/releases/${version}.md"
-          notes_target="release-notes.md"
-
-          if [[ -f "$notes_source" ]]; then
-            cp "$notes_source" "$notes_target"
-          else
-            printf '%s\n' \
-              "# InnoNetworkProtobuf ${version}" \
-              "" \
-              "See CHANGELOG.md for the summarized release history." > "$notes_target"
-          fi
-
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "notes_path=${notes_target}" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
-          name: InnoNetworkProtobuf ${{ steps.notes.outputs.version }}
-          body_path: ${{ steps.notes.outputs.notes_path }}
+          ref: ${{ needs.validate-release.outputs.sha }}
+          fetch-depth: 0
+      - name: Recheck immutable candidate
+        env:
+          VERSION: ${{ needs.validate-release.outputs.version }}
+        run: bash Scripts/check_release_gate.sh publish "$VERSION"
+      - name: Publish existing tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate-release.outputs.version }}
+        run: gh release create "$VERSION" --verify-tag --title "InnoNetwork-Protobuf $VERSION" --notes-file "docs/releases/$VERSION.md"

@@ -1,6 +1,6 @@
 # Support
 
-InnoNetworkProtobuf is maintained under a lightweight maintainer model.
+InnoNetwork-Protobuf is maintained under a lightweight maintainer model.
 
 ## What to Expect
 

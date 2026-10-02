@@ -1,10 +1,9 @@
 import Foundation
-import Testing
-import SwiftProtobuf
 import InnoNetwork
 import InnoNetworkProtobuf
 import InnoNetworkTestSupport
-
+import SwiftProtobuf
+import Testing
 
 // Test protobuf messages
 struct TestUserRequest: SwiftProtobuf.Message, Sendable {
@@ -41,7 +40,6 @@ struct TestUserRequest: SwiftProtobuf.Message, Sendable {
         return userID == other.userID && unknownFields == other.unknownFields
     }
 }
-
 
 struct TestUserResponse: SwiftProtobuf.Message, Sendable {
     var userID: Int32 = 0
@@ -86,63 +84,29 @@ struct TestUserResponse: SwiftProtobuf.Message, Sendable {
 
     func isEqualTo(message: any SwiftProtobuf.Message) -> Bool {
         guard let other = message as? TestUserResponse else { return false }
-        return userID == other.userID &&
-               name == other.name &&
-               email == other.email &&
-               unknownFields == other.unknownFields
+        return userID == other.userID && name == other.name && email == other.email
+            && unknownFields == other.unknownFields
     }
 }
-
 
 // Test API definition using protobuf
-struct GetUserProtobuf: ProtobufAPIDefinition {
-    typealias Parameter = TestUserRequest
-    typealias APIResponse = TestUserResponse
-
-    var method: HTTPMethod { .post }
-    var path: String { "/user/protobuf" }
-    var sessionAuthentication: SessionAuthentication { .anonymous }
-    let parameters: TestUserRequest?
-
-    init(userID: Int32) {
-        self.parameters = TestUserRequest(userID: userID)
-    }
+func GetUserProtobuf(userID: Int32) throws(NetworkError) -> EncodedRequest<TestUserResponse> {
+    try .protobuf(
+        method: .post, path: "/user/protobuf", auth: .anonymous,
+        body: TestUserRequest(userID: userID), codec: .init(allowsMissingContentType: true))
 }
-
 
 // GET request API definition
-struct GetUserProtobufGET: ProtobufAPIDefinition {
-    typealias Parameter = TestUserRequest
-    typealias APIResponse = TestUserResponse
-
-    var method: HTTPMethod { .get }
-    var path: String { "/user/\(userID)" }
-    var sessionAuthentication: SessionAuthentication { .anonymous }
-    let parameters: TestUserRequest? = nil
-    let userID: Int32
-
-    init(userID: Int32) {
-        self.userID = userID
-    }
+func GetUserProtobufGET(userID: Int32) throws(NetworkError) -> EncodedRequest<TestUserResponse> {
+    try .protobuf(
+        method: .get, path: "/user/\(userID)", auth: .anonymous,
+        codec: .init(allowsMissingContentType: true))
 }
-
 
 // Empty response API definition
-struct DeleteUserProtobuf: ProtobufAPIDefinition {
-    typealias Parameter = TestUserRequest
-    typealias APIResponse = ProtobufEmptyResponse
-
-    var method: HTTPMethod { .delete }
-    var path: String { "/user/\(userID)" }
-    var sessionAuthentication: SessionAuthentication { .anonymous }
-    let parameters: TestUserRequest? = nil
-    let userID: Int32
-
-    init(userID: Int32) {
-        self.userID = userID
-    }
+func DeleteUserProtobuf(userID: Int32) -> EncodedRequest<EmptyResponse> {
+    .init(method: .delete, path: "/user/\(userID)", auth: .anonymous, responseDecoder: .noContent())
 }
-
 
 // Request interceptor for testing
 struct TestProtobufRequestInterceptor: RequestInterceptor {
@@ -153,7 +117,6 @@ struct TestProtobufRequestInterceptor: RequestInterceptor {
     }
 }
 
-
 // Response interceptor for testing
 struct TestProtobufResponseInterceptor: ResponseInterceptor {
     func adapt(_ response: Response, request: URLRequest) async throws -> Response {
@@ -161,24 +124,17 @@ struct TestProtobufResponseInterceptor: ResponseInterceptor {
     }
 }
 
-
 // API definition with interceptors
-struct GetUserProtobufWithInterceptors: ProtobufAPIDefinition {
-    typealias Parameter = TestUserRequest
-    typealias APIResponse = TestUserResponse
-
-    var method: HTTPMethod { .post }
-    var path: String { "/user/protobuf" }
-    var sessionAuthentication: SessionAuthentication { .anonymous }
-    let parameters: TestUserRequest?
-    var requestInterceptors: [RequestInterceptor] { [TestProtobufRequestInterceptor()] }
-    var responseInterceptors: [ResponseInterceptor] { [TestProtobufResponseInterceptor()] }
-
-    init(userID: Int32) {
-        self.parameters = TestUserRequest(userID: userID)
-    }
+func GetUserProtobufWithInterceptors(userID: Int32) throws(NetworkError) -> EncodedRequest<
+    TestUserResponse
+> {
+    try .protobuf(
+        method: .post, path: "/user/protobuf", auth: .anonymous,
+        body: TestUserRequest(userID: userID), codec: .init(allowsMissingContentType: true),
+        options: .init(
+            requestInterceptors: [TestProtobufRequestInterceptor()],
+            responseInterceptors: [TestProtobufResponseInterceptor()]))
 }
-
 
 private func protobufData<M: SwiftProtobuf.Message>(_ message: M) throws -> Data {
     try message.serializedData()
@@ -187,7 +143,6 @@ private func protobufData<M: SwiftProtobuf.Message>(_ message: M) throws -> Data
 private func decodeProtobuf<M: SwiftProtobuf.Message>(_: M.Type, from data: Data) throws -> M {
     return try M(serializedBytes: data)
 }
-
 
 @Suite("Protobuf Network Tests")
 struct ProtobufNetworkClientTests {
@@ -204,12 +159,14 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        let response = try await client.protobufRequest(GetUserProtobuf(userID: 1))
+        let response = try await client.request(GetUserProtobuf(userID: 1))
         #expect(response.userID == 1)
         #expect(response.name == "Test User")
         #expect(response.email == "test@example.com")
         #expect(mockSession.capturedRequest?.httpMethod == "POST")
-        #expect(mockSession.capturedRequest?.value(forHTTPHeaderField: "Content-Type") == "application/x-protobuf")
+        #expect(
+            mockSession.capturedRequest?.value(forHTTPHeaderField: "Content-Type")
+                == "application/protobuf")
     }
 
     @Test("Successful GET request with protobuf")
@@ -224,7 +181,7 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        let response = try await client.protobufRequest(GetUserProtobufGET(userID: 42))
+        let response = try await client.request(GetUserProtobufGET(userID: 42))
         #expect(response.userID == 42)
         #expect(response.name == "Jane Doe")
         #expect(mockSession.capturedRequest?.httpMethod == "GET")
@@ -242,7 +199,7 @@ struct ProtobufNetworkClientTests {
         )
 
         await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(GetUserProtobuf(userID: 1))
+            try await client.request(GetUserProtobuf(userID: 1))
         }
     }
 
@@ -257,11 +214,11 @@ struct ProtobufNetworkClientTests {
         )
 
         await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(GetUserProtobuf(userID: 1))
+            try await client.request(GetUserProtobuf(userID: 1))
         }
     }
 
-    @Test("Network error throws NetworkError.underlying")
+    @Test("Offline error uses InnoNetwork 6 structured reachability")
     func protobufNetworkError() async throws {
         let mockSession = MockURLSession()
         mockSession.mockError = URLError(.notConnectedToInternet)
@@ -271,8 +228,12 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(GetUserProtobuf(userID: 1))
+        do {
+            _ = try await client.request(GetUserProtobuf(userID: 1))
+            Issue.record("Offline request unexpectedly succeeded")
+        } catch NetworkError.reachability(let reason, let underlying, _) {
+            #expect(reason == .notConnectedToInternet)
+            #expect(underlying.code == URLError.notConnectedToInternet.rawValue)
         }
     }
 
@@ -288,7 +249,7 @@ struct ProtobufNetworkClientTests {
         )
 
         await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(GetUserProtobuf(userID: 1))
+            try await client.request(GetUserProtobuf(userID: 1))
         }
     }
 
@@ -302,11 +263,11 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        _ = try await client.protobufRequest(DeleteUserProtobuf(userID: 1))
+        _ = try await client.request(DeleteUserProtobuf(userID: 1))
         #expect(mockSession.capturedRequest?.httpMethod == "DELETE")
     }
 
-    @Test("Empty data with 200 status succeeds for ProtobufEmptyResponse")
+    @Test("No-content policy rejects an unexpected 200 even with empty data")
     func protobufEmptyDataSuccess() async throws {
         let mockSession = MockURLSession()
         mockSession.setMockResponse(statusCode: 200, data: Data())
@@ -316,18 +277,20 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        _ = try await client.protobufRequest(DeleteUserProtobuf(userID: 1))
+        await #expect(throws: NetworkError.self) {
+            try await client.request(DeleteUserProtobuf(userID: 1))
+        }
     }
 
-    @Test("ProtobufEmptyResponse serialization and deserialization")
+    @Test("Generated Empty serialization and deserialization")
     func protobufEmptyResponseSerializationTest() throws {
         // Test empty response serialization
-        let emptyResponse = ProtobufEmptyResponse()
+        let emptyResponse = Google_Protobuf_Empty()
         let data = try protobufData(emptyResponse)
         #expect(data.isEmpty)
 
         // Test deserialization
-        let decoded = try decodeProtobuf(ProtobufEmptyResponse.self, from: data)
+        let decoded = try decodeProtobuf(Google_Protobuf_Empty.self, from: data)
         #expect(emptyResponse.isEqualTo(message: decoded))
     }
 
@@ -343,7 +306,7 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        _ = try await client.protobufRequest(GetUserProtobufWithInterceptors(userID: 1))
+        _ = try await client.request(GetUserProtobufWithInterceptors(userID: 1))
 
         let authHeader = mockSession.capturedRequest?.value(forHTTPHeaderField: "Authorization")
         #expect(authHeader == "Bearer test-token")
@@ -383,7 +346,7 @@ struct ProtobufNetworkClientTests {
             session: mockSession
         )
 
-        _ = try await client.protobufRequest(GetUserProtobuf(userID: 99))
+        _ = try await client.request(GetUserProtobuf(userID: 99))
 
         // Verify request body contains protobuf data
         let requestBody = try #require(mockSession.capturedRequest?.httpBody)
@@ -395,26 +358,13 @@ struct ProtobufNetworkClientTests {
     }
 }
 
-
 @Suite("Protobuf Request Configuration Tests")
 struct ProtobufRequestConfigTests {
 
     @Test("GET request with parameters throws error")
     func getRequestWithParametersError() async throws {
-        struct InvalidGetRequest: ProtobufAPIDefinition {
-            typealias Parameter = TestUserRequest
-            typealias APIResponse = TestUserResponse
-
-            var method: HTTPMethod { .get }
-            var path: String { "/user" }
-            var sessionAuthentication: SessionAuthentication { .anonymous }
-            let parameters: TestUserRequest?
-
-            init() {
-                // Invalid: GET request should not have parameters
-                self.parameters = TestUserRequest(userID: 1)
-            }
-        }
+        let invalid = try EncodedRequest<TestUserResponse>.protobuf(
+            method: .get, path: "/user", auth: .anonymous, body: TestUserRequest(userID: 1))
 
         let mockSession = MockURLSession()
         let client = DefaultNetworkClient(
@@ -423,7 +373,7 @@ struct ProtobufRequestConfigTests {
         )
 
         await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(InvalidGetRequest())
+            try await client.request(invalid)
         }
     }
 
@@ -440,11 +390,10 @@ struct ProtobufRequestConfigTests {
         )
 
         // This should succeed as parameters is nil
-        let response = try await client.protobufRequest(GetUserProtobufGET(userID: 1))
+        let response = try await client.request(GetUserProtobufGET(userID: 1))
         #expect(response.userID == 1)
     }
 }
-
 
 @Suite("Protobuf Retry Policy Tests")
 struct ProtobufRetryTests {
@@ -491,7 +440,7 @@ struct ProtobufRetryTests {
             session: mockSession
         )
 
-        let response = try await client.protobufRequest(GetUserProtobuf(userID: 1))
+        let response = try await client.request(GetUserProtobuf(userID: 1))
         #expect(response.userID == 1)
         #expect(mockSession.capturedRequestsInOrder.count == 2)
     }
@@ -499,10 +448,11 @@ struct ProtobufRetryTests {
     @Test("Retry policy stops after max retries")
     func stopAfterMaxRetries() async throws {
         let mockSession = MockURLSession()
-        mockSession.setScriptedResponses(Array(
-            repeating: .failure(URLError(.networkConnectionLost)),
-            count: 3
-        ))
+        mockSession.setScriptedResponses(
+            Array(
+                repeating: .failure(URLError(.networkConnectionLost)),
+                count: 3
+            ))
         let retryPolicy = SimpleRetryPolicy(maxRetries: 2, maxTotalRetries: 2, retryDelay: 0.01)
         let networkConfig = NetworkConfiguration.advanced(
             baseURL: URL(string: "https://test.example.com")!,
@@ -515,7 +465,7 @@ struct ProtobufRetryTests {
         )
 
         await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(GetUserProtobuf(userID: 1))
+            try await client.request(GetUserProtobuf(userID: 1))
         }
 
         // Initial attempt + 2 retries = 3 total attempts
@@ -525,10 +475,11 @@ struct ProtobufRetryTests {
     @Test("Retry policy respects max total retries across attempts")
     func respectsMaxTotalRetries() async throws {
         let mockSession = MockURLSession()
-        mockSession.setScriptedResponses(Array(
-            repeating: .failure(URLError(.networkConnectionLost)),
-            count: 2
-        ))
+        mockSession.setScriptedResponses(
+            Array(
+                repeating: .failure(URLError(.networkConnectionLost)),
+                count: 2
+            ))
         let retryPolicy = SimpleRetryPolicy(maxRetries: 5, maxTotalRetries: 1, retryDelay: 0.01)
         let networkConfig = NetworkConfiguration.advanced(
             baseURL: URL(string: "https://test.example.com")!,
@@ -541,14 +492,13 @@ struct ProtobufRetryTests {
         )
 
         await #expect(throws: NetworkError.self) {
-            try await client.protobufRequest(GetUserProtobuf(userID: 1))
+            try await client.request(GetUserProtobuf(userID: 1))
         }
 
         // Initial attempt + 1 total retry = 2 attempts.
         #expect(mockSession.capturedRequestsInOrder.count == 2)
     }
 }
-
 
 private func TestAPIConfiguration() -> NetworkConfiguration {
     makeTestNetworkConfiguration(baseURL: "https://test.example.com")

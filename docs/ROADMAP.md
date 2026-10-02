@@ -1,14 +1,27 @@
 # Roadmap
 
-## Deferred Operational Follow-ups
+## 6.0 Release Boundary
 
-- persistence 내구성 심화: `fsync`, `checksum`, `compaction budget`, 대용량 큐 기준 정립
-- websocket 확장 포인트: handshake/auth refresh와 app-level protocol failure 분리
-- benchmark governance 확장: threshold 도입, trend tracking, PR comment 자동화
-- configuration API 장기 정리: advanced surface 축소와 권장 public path 단순화
-- `@unchecked Sendable` 제거 로드맵: 현재 승인된 6개 예외(`EventPipelineMetricsReporterProxy`, `URLQueryEncoder`, `QueryValueBox`, `SnakeCaseKeyTransformCache`, `_URLQueryValueEncoder`, `URLQueryCustomKeyTransform`)를 단계적으로 제거하고, 필요 시 public API와 내부 동시성 모델을 재설계
+The approved breaking redesign includes public core encoded requests, shared
+operations/cancellation, explicit HTTP empty semantics, configurable binary codec,
+standard media negotiation, resource budgets and hardened release validation.
+It supersedes the earlier SPI-only compatibility reset and absorbs the former
+encoding/decoding/media/generated-client candidates. Core 6.1 must ship first.
 
-## Public DSL Candidate
+## Remaining gates
 
-- 현재 `RequestEncodingPolicy`, `ResponseDecodingStrategy`, `TransportPolicy`는 내부 설계 축으로 유지합니다.
-- 다음 마일스톤에서 public DSL 승격 여부를 다시 판단합니다.
+- Local core and adapter regression/integration/platform evidence.
+- Reviewed and published core 6.1; remote-only minimum/latest dependency checks.
+- Exact adapter candidate Xcode 26/27 CI, five platforms, Ready notes and annotated tag.
+- Separate publication approval, then both-remote-tag consumer verification.
+
+## Optional follow-ups
+
+- Upstream-supported pre-allocation encoder cap if a concrete consumer needs one.
+- Dedicated protobuf throughput/peak-memory performance baselines with realistic schemas.
+- Application-specific exporters consuming core's payload-free codec measurements.
+
+## Out of scope
+
+gRPC, streaming RPC, schema registries, generator ownership and canonical
+serialization are separate contracts, not implicit features of this HTTP adapter.
