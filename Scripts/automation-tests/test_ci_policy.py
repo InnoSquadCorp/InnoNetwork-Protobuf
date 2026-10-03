@@ -127,9 +127,9 @@ class WorkflowTests(unittest.TestCase):
         for key,old in self.old['release'].items():
             if key.startswith('publish'):continue
             self.assertEqual(jobs[key],old) if 'codeql' in self.old else self.assertEqual(
-                [s for s in jobs[key]['steps'] if 'run' in s],[s for s in old['steps'] if 'run' in s])
+                [s for s in jobs[key]['steps'] if 'run' in s and s.get('name') != 'Verify exact release identity'],[s for s in old['steps'] if 'run' in s])
         if 'codeql' not in self.old:
-            release=jobs['publish-release'];self.assertEqual(release['needs'],'validate-release')
+            release=jobs['publish-release'];self.assertEqual(set(release['needs']),{'resolve-release','validate-release'})
             notes=next(s for s in release['steps'] if s.get('id')=='notes')
             self.assertNotIn('${{',notes['run']);self.assertIn('RELEASE_VERSION',notes['env'])
             with tempfile.TemporaryDirectory() as d:

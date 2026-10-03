@@ -12,14 +12,36 @@ on:
         type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  resolve-release:
+    name: Resolve Release Identity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.identity.outputs.tag }}
+      commit_sha: ${{ steps.identity.outputs.commit_sha }}
+      tag_object: ${{ steps.identity.outputs.tag_object }}
+    steps:
+      - name: Checkout immutable release policy
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.workflow_sha }}
+      - name: Resolve existing remote tag
+        id: identity
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          EXPECTED_SHA: ${{ github.event_name == 'push' && github.sha || '' }}
+        run: python3 -B Scripts/release-ref.py --tag "$RELEASE_TAG" --expected-sha "$EXPECTED_SHA"
+
   validate-release:
+    needs: resolve-release
     name: Validate Release
     runs-on: macos-15
     timeout-minutes: 60
@@ -31,7 +53,23 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
+          ref: ${{ needs.resolve-release.outputs.commit_sha }}
+
+      - name: Checkout immutable identity policy
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.workflow_sha }}
+          path: .ci-release-policy
+          sparse-checkout: Scripts/release-ref.py
+          sparse-checkout-cone-mode: false
+
+      - name: Verify exact release identity
+        env:
+          RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.commit_sha }}
+          RELEASE_TAG_OBJECT: ${{ needs.resolve-release.outputs.tag_object }}
+        run: python3 -B .ci-release-policy/Scripts/release-ref.py --tag "$RELEASE_TAG" --expected-sha "$RELEASE_SHA" --expected-tag-object "$RELEASE_TAG_OBJECT" --require-head
 
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
@@ -56,7 +94,7 @@ jobs:
 
   publish-release:
     name: Publish Release
-    needs: validate-release
+    needs: [resolve-release, validate-release]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -67,7 +105,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
+          ref: ${{ needs.resolve-release.outputs.commit_sha }}
 
       - name: Prepare release notes
         id: notes
@@ -97,9 +135,26 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "notes_path=${notes_target}" >> "$GITHUB_OUTPUT"
 
+      - name: Checkout immutable identity policy
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.workflow_sha }}
+          path: .ci-release-policy
+          sparse-checkout: Scripts/release-ref.py
+          sparse-checkout-cone-mode: false
+
+      - name: Verify exact release identity
+        env:
+          RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.commit_sha }}
+          RELEASE_TAG_OBJECT: ${{ needs.resolve-release.outputs.tag_object }}
+        run: python3 -B .ci-release-policy/Scripts/release-ref.py --tag "$RELEASE_TAG" --expected-sha "$RELEASE_SHA" --expected-tag-object "$RELEASE_TAG_OBJECT" --require-head
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          tag_name: ${{ needs.resolve-release.outputs.tag }}
+          target_commitish: ${{ needs.resolve-release.outputs.commit_sha }}
           name: InnoNetworkProtobuf ${{ steps.notes.outputs.version }}
           body_path: ${{ steps.notes.outputs.notes_path }}
