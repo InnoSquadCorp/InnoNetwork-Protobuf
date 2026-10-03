@@ -133,7 +133,12 @@ class WorkflowTests(unittest.TestCase):
             notes=next(s for s in release['steps'] if s.get('id')=='notes')
             self.assertNotIn('${{',notes['run']);self.assertIn('RELEASE_VERSION',notes['env'])
             with tempfile.TemporaryDirectory() as d:
-                for version in ['1.2.3','1.2.3-rc.1','v1.2.3','v1.2.3-rc.1','vv1.2.3','$(touch owned)','../../etc/passwd','1.2.3\ninjected=yes']:
+                valid = ['0.0.0','1.2.3','1.2.3-rc.1','v1.2.3','v1.2.3-rc.1',
+                         '1.2.3-0','1.2.3-01alpha','1.2.3-alpha+001','v1.2.3+build.001']
+                invalid = ['01.2.3','1.02.3','1.2.03','1.2.3-01','1.2.3-rc.01',
+                           '1.2.3-alpha..1','1.2.3+build..1','1.2.3-','1.2.3+',
+                           'vv1.2.3','$(touch owned)','../../etc/passwd','1.2.3\ninjected=yes']
+                for version in valid + invalid:
                     result=subprocess.run(['bash','-c',notes['run']],cwd=d,env={**os.environ,'RELEASE_VERSION':version,'GITHUB_OUTPUT':str(Path(d)/'output')},capture_output=True)
-                    self.assertEqual(result.returncode==0,version in ['1.2.3','1.2.3-rc.1','v1.2.3','v1.2.3-rc.1'])
+                    self.assertEqual(result.returncode==0,version in valid)
                 self.assertFalse((Path(d)/'owned').exists())
