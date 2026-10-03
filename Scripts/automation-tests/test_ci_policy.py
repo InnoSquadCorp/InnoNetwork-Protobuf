@@ -133,7 +133,7 @@ class WorkflowTests(unittest.TestCase):
             notes=next(s for s in release['steps'] if s.get('id')=='notes')
             self.assertNotIn('${{',notes['run']);self.assertIn('RELEASE_VERSION',notes['env'])
             with tempfile.TemporaryDirectory() as d:
-                for version in ['1.2.3','1.2.3-rc.1','$(touch owned)','../../etc/passwd','1.2.3\ninjected=yes']:
+                for version in ['1.2.3','1.2.3-rc.1','v1.2.3','v1.2.3-rc.1','vv1.2.3','$(touch owned)','../../etc/passwd','1.2.3\ninjected=yes']:
                     result=subprocess.run(['bash','-c',notes['run']],cwd=d,env={**os.environ,'RELEASE_VERSION':version,'GITHUB_OUTPUT':str(Path(d)/'output')},capture_output=True)
-                    self.assertEqual(result.returncode==0,version in ['1.2.3','1.2.3-rc.1'])
+                    self.assertEqual(result.returncode==0,version in ['1.2.3','1.2.3-rc.1','v1.2.3','v1.2.3-rc.1'])
                 self.assertFalse((Path(d)/'owned').exists())

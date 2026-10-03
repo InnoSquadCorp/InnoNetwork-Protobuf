@@ -76,7 +76,7 @@ jobs:
           RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
         run: |
           set -euo pipefail
-          version="$RELEASE_VERSION"
+          version="${RELEASE_VERSION#v}"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]] || { echo "Invalid release version" >&2; exit 1; }
           notes_source="docs/releases/${version}.md"
           notes_target="release-notes.md"
