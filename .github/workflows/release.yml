@@ -15,6 +15,9 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   validate-release:
     name: Validate Release
@@ -25,8 +28,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
 
       - name: Select Xcode
@@ -54,21 +58,30 @@ jobs:
     name: Publish Release
     needs: validate-release
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: write
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
 
       - name: Prepare release notes
         id: notes
         shell: bash
+        env:
+          RELEASE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
         run: |
           set -euo pipefail
-          version="${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}"
+          version="${RELEASE_VERSION#v}"
+          # SemVer 2.0.0: numeric core/prerelease identifiers cannot have leading zeros.
+          numeric='(0|[1-9][0-9]*)'
+          prerelease="($numeric|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
+          version_pattern="^$numeric\.$numeric\.$numeric(-$prerelease(\.$prerelease)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$"
+          [[ "$version" =~ $version_pattern ]] || { echo "Invalid release version" >&2; exit 1; }
           notes_source="docs/releases/${version}.md"
           notes_target="release-notes.md"
 
@@ -85,7 +98,7 @@ jobs:
           echo "notes_path=${notes_target}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           name: InnoNetworkProtobuf ${{ steps.notes.outputs.version }}
