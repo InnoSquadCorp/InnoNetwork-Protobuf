@@ -127,3 +127,7 @@ print(response)
 - Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Security policy: [SECURITY.md](SECURITY.md)
 - Support model: [SUPPORT.md](SUPPORT.md)
+
+## Sponsorship
+
+Support InnoNetwork-Protobuf development through [GitHub Sponsors](https://github.com/sponsors/InnoSquadCorp) or [Patreon](https://www.patreon.com/c/InnoSquad).
