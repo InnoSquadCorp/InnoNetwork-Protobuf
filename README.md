@@ -130,4 +130,4 @@ print(response)
 
 ## Sponsorship
 
-Support InnoNetwork-Protobuf development through [GitHub Sponsors](https://github.com/sponsors/InnoSquadCorp) or [Patreon](https://www.patreon.com/c/InnoSquad).
+Support InnoNetwork-Protobuf development through [GitHub Sponsors](https://github.com/sponsors/InnoSquadCorp) or [Patreon](https://www.patreon.com/15188938/join).
