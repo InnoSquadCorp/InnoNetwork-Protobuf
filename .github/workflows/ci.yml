@@ -49,12 +49,84 @@ jobs:
           python3 -B -m unittest discover -s Scripts/automation-tests -v
           python3 -B Scripts/check-ci-workflows.py
 
+  static-contracts:
+    if: ${{ !(github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) }}
+    name: Static Contracts (no dependency resolution)
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: bash Scripts/check_static_contracts.sh
+
   build-and-test:
     needs: ci-plan
     if: fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test
-    name: Build and Test
+    name: Build and Test — Xcode ${{ matrix.xcode.label }}
+    runs-on: ${{ matrix.xcode.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode:
+          - label: "26.0.1"
+            runner: macos-15
+            path: /Applications/Xcode_26.0.1.app
+          - label: "27.0"
+            runner: xcode-27
+            path: /Applications/Xcode.app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: sudo xcode-select -s ${{ matrix.xcode.path }}
+
+      - name: Show toolchain versions
+        run: |
+          xcodebuild -version
+          xcrun swift --version
+
+      - name: Resolve dependencies
+        run: |
+          xcrun swift package resolve
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
+
+      - name: Build
+        run: xcrun swift build
+
+      - name: Test
+        run: xcrun swift test
+
+      - name: Compile macro contracts
+        run: ruby Scripts/check_macro_compile_failures.rb
+
+  apple-platform-builds:
+    needs: ci-plan
+    if: fromJSON(needs.ci-plan.outputs.plan).jobs.apple-platform-builds
+    name: Build — ${{ matrix.runtime }}
     runs-on: macos-15
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: iOS
+            sdk: iphonesimulator
+            triple: arm64-apple-ios16.0-simulator
+          - runtime: tvOS
+            sdk: appletvos
+            triple: arm64-apple-tvos16.0
+          - runtime: watchOS
+            sdk: watchos
+            triple: arm64_32-apple-watchos9.0
+          - runtime: visionOS
+            sdk: xros
+            triple: arm64-apple-xros1.0
 
     steps:
       - name: Checkout
@@ -65,19 +137,16 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
-      - name: Show toolchain versions
+      - name: Require SDK
+        run: xcrun --sdk '${{ matrix.sdk }}' --show-sdk-path
+
+      - name: Build ${{ matrix.runtime }}
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+          SDK: ${{ matrix.sdk }}
+          TRIPLE: ${{ matrix.triple }}
         run: |
-          xcodebuild -version
-          xcrun swift --version
-
-      - name: Resolve dependencies
-        run: xcrun swift package resolve
-
-      - name: Build
-        run: xcrun swift build
-
-      - name: Test
-        run: xcrun swift test
+          bash Scripts/build_apple_platform_target.sh "$RUNTIME" "$SDK" "$TRIPLE"
 
   docs-contract-sync:
     needs: ci-plan
@@ -96,10 +165,14 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
       - name: Resolve dependencies
-        run: xcrun swift package resolve
+        run: |
+          xcrun swift package resolve
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
 
       - name: Verify docs and stability contract
-        run: bash Scripts/check_docs_contract_sync.sh
+        run: |
+          bash Scripts/check_docs_contract_sync.sh
+          ruby Scripts/test_release_gate.rb
 
       - name: Build documentation smoke target
         run: xcrun swift build --target InnoNetworkProtobufDocSmoke
@@ -123,14 +196,19 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
-      - name: Build consumer smoke package
+      - name: Build and run preferred and compatibility product consumers
         working-directory: Examples/ConsumerSmoke
-        run: xcrun swift build
+        run: |
+          xcrun swift run ConsumerSmoke
+          xcrun swift run LegacyConsumerSmoke
+          ruby ../../Scripts/check_dependency_integrity.rb .build Package.resolved
 
+      - name: Verify macro-disabled consumer graph
+        run: bash Scripts/check_macro_disabled_consumer.sh
   ci-required:
     name: CI Required
     if: ${{ always() }}
-    needs: ['ci-plan', 'policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke']
+    needs: ['ci-plan', 'policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke', 'apple-platform-builds', 'static-contracts']
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
