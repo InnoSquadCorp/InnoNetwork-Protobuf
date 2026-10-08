@@ -3,8 +3,13 @@
 This skill and its examples originate in InnoSquadCorp/InnoNetwork-Protobuf.
 Retain this notice when distributing the complete skill.
 
+The validation helper is adapted from the library-owned
+[InnoRouter skill](https://github.com/InnoSquadCorp/InnoRouter/tree/3ed5ea0d6b07c1b282182c6e5468dd3ed962c402/skills/innorouter),
+also under the MIT license below.
+
 MIT License
 
+Copyright (c) 2025 InnoSquad
 Copyright (c) 2026 InnoSquad
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
