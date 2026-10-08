@@ -104,7 +104,10 @@ class WorkflowTests(unittest.TestCase):
             elif key not in {'ci-plan','ci-required'}:
                 self.assertEqual(job['needs'],'ci-plan')
                 if key!='policy':self.assertEqual(job['if'],'fromJSON(needs.ci-plan.outputs.plan).jobs.'+key)
-            if 'runs-on' in job:self.assertGreater(job['timeout-minutes'],0)
+            if 'runs-on' in job:
+                if key == 'ci-required':
+                    self.assertIn('360 || (5)', job['timeout-minutes'])
+                else:self.assertGreater(job['timeout-minutes'],0)
             for step in job.get('steps',[]):
                 self.assertNotIn('continue-on-error',step)
                 if step.get('uses','').startswith('actions/checkout@'):self.assertIs(step['with']['persist-credentials'],False)
@@ -113,10 +116,20 @@ class WorkflowTests(unittest.TestCase):
         for key,old in self.old['jobs'].items():
             current=self.ci['jobs'][key]
             for field in ['name','runs-on','timeout-minutes','strategy','permissions']:
-                self.assertEqual(current.get(field),old.get(field),(key,field))
+                if key == 'static-contracts' and field == 'runs-on':
+                    self.assertEqual(current[field], 'ubuntu-latest')
+                else:self.assertEqual(current.get(field),old.get(field),(key,field))
             old_steps=[s for s in old['steps'] if not s.get('uses','').startswith('actions/checkout@')]
             new_steps=[s for s in current['steps'] if not s.get('uses','').startswith('actions/checkout@')]
-            self.assertEqual(new_steps,old_steps,key)
+            if key == 'apple-platform-builds':
+                self.assertEqual(new_steps[:2], old_steps[:2])
+                selected = new_steps[2]
+                self.assertIn('Scripts/ci_product_execution.py build', selected['run'])
+                self.assertIn('Scripts/ci_product_execution.py verify', selected['run'])
+                self.assertEqual(new_steps[3]['name'], 'Preserve exact platform build receipt')
+                # The adapter's default recipe is compared to all original matrix
+                # runtime/sdk/triple tuples by test_ci_product_execution.
+            else:self.assertEqual(new_steps,old_steps,key)
     def test_all_public_manifests_pin_core_611_and_pair_matches_release(self):
         import re
         manifests = ['Package.swift', 'Examples/ConsumerSmoke/Package.swift',

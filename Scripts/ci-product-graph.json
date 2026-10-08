@@ -1,0 +1,95 @@
+{
+  "schema": 1,
+  "manifest_sha256": "4bc695d7d5e13b014b42019f6ef841998e0fbf9fc49c2fcc0d8c56ad692e194d",
+  "targets": {
+    "InnoNetworkProtobufMacros": {
+      "kind": "macro",
+      "inputs": [
+        "Sources/InnoNetworkProtobufMacros/"
+      ],
+      "dependencies": []
+    },
+    "InnoNetworkProtobuf": {
+      "kind": "regular",
+      "inputs": [
+        "Sources/InnoNetworkProtobuf/"
+      ],
+      "dependencies": [
+        "InnoNetworkProtobufMacros"
+      ]
+    },
+    "InnoNetworkProtobufDocSmoke": {
+      "kind": "executable",
+      "inputs": [
+        "SmokeTests/InnoNetworkProtobufDocSmoke/"
+      ],
+      "dependencies": [
+        "InnoNetworkProtobuf"
+      ]
+    },
+    "MacroPlatformSmoke": {
+      "kind": "regular",
+      "inputs": [
+        "SmokeTests/MacroPlatformSmoke/"
+      ],
+      "dependencies": [
+        "InnoNetworkProtobuf"
+      ]
+    },
+    "InnoNetworkProtobufMacroTests": {
+      "kind": "test",
+      "inputs": [
+        "Tests/InnoNetworkProtobufMacroTests/"
+      ],
+      "dependencies": [
+        "InnoNetworkProtobufMacros"
+      ]
+    },
+    "InnoNetworkProtobufTests": {
+      "kind": "test",
+      "inputs": [
+        "Tests/InnoNetworkProtobufTests/"
+      ],
+      "dependencies": [
+        "InnoNetworkProtobuf"
+      ]
+    }
+  },
+  "products": {
+    "InnoNetwork-Protobuf": [
+      "InnoNetworkProtobuf"
+    ],
+    "InnoNetworkProtobuf": [
+      "InnoNetworkProtobuf"
+    ]
+  },
+  "full_targets": [
+    "InnoNetworkProtobufMacros"
+  ],
+  "consumers": {
+    "ConsumerSmoke": {
+      "path": "Examples/ConsumerSmoke",
+      "products": [
+        "InnoNetwork-Protobuf"
+      ]
+    },
+    "LegacyConsumerSmoke": {
+      "path": "Examples/ConsumerSmoke",
+      "products": [
+        "InnoNetworkProtobuf"
+      ]
+    },
+    "ManualConsumerSmoke": {
+      "path": "Examples/ManualConsumerSmoke",
+      "products": [
+        "InnoNetwork-Protobuf"
+      ]
+    },
+    "ValidationCLI": {
+      "path": "Examples/ValidationApp",
+      "products": [
+        "InnoNetwork-Protobuf"
+      ]
+    }
+  }
+}

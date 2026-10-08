@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "scripts": "Scripts",
+  "metadata": "github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))",
+  "lane_labels": [
+    "release-validation"
+  ],
+  "workflows": {
+    ".github/workflows/ci.yml": {
+      "original_concurrency": {
+        "group": "ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}",
+        "cancel-in-progress": "${{ !(github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) }}",
+        "queue": "${{ (github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) && 'max' || 'single' }}"
+      },
+      "jobs": {
+        "policy": {
+          "axes": [],
+          "product_flags": [],
+          "product_key": null,
+          "matrix": {}
+        },
+        "static-contracts": {
+          "axes": [],
+          "product_flags": [],
+          "product_key": null,
+          "matrix": {}
+        },
+        "build-and-test": {
+          "axes": [
+            "matrix.xcode.label"
+          ],
+          "product_flags": [],
+          "product_key": null,
+          "matrix": {
+            "xcode": [
+              {
+                "label": "26.0.1",
+                "runner": "macos-15",
+                "path": "/Applications/Xcode_26.0.1.app"
+              },
+              {
+                "label": "27.0",
+                "runner": "xcode-27",
+                "path": "/Applications/Xcode.app"
+              }
+            ]
+          }
+        },
+        "apple-platform-builds": {
+          "axes": [
+            "matrix.runtime"
+          ],
+          "product_flags": [
+            "INNOPROTOBUF_PRODUCT_CI"
+          ],
+          "product_key": "needs.ci-plan.outputs.product-key",
+          "matrix": {
+            "include": [
+              {
+                "runtime": "iOS",
+                "sdk": "iphonesimulator",
+                "triple": "arm64-apple-ios16.0-simulator"
+              },
+              {
+                "runtime": "tvOS",
+                "sdk": "appletvos",
+                "triple": "arm64-apple-tvos16.0"
+              },
+              {
+                "runtime": "watchOS",
+                "sdk": "watchos",
+                "triple": "arm64_32-apple-watchos9.0"
+              },
+              {
+                "runtime": "visionOS",
+                "sdk": "xros",
+                "triple": "arm64-apple-xros1.0"
+              }
+            ]
+          }
+        },
+        "docs-contract-sync": {
+          "axes": [],
+          "product_flags": [],
+          "product_key": null,
+          "matrix": {}
+        },
+        "consumer-smoke": {
+          "axes": [],
+          "product_flags": [],
+          "product_key": null,
+          "matrix": {}
+        },
+        "paired-candidate": {
+          "axes": [
+            "matrix.xcode.label"
+          ],
+          "product_flags": [],
+          "product_key": null,
+          "matrix": {
+            "xcode": [
+              {
+                "label": "26.0.1",
+                "runner": "macos-15",
+                "path": "/Applications/Xcode_26.0.1.app"
+              },
+              {
+                "label": "27.0",
+                "runner": "xcode-27",
+                "path": "/Applications/Xcode.app"
+              }
+            ]
+          }
+        }
+      },
+      "excluded_jobs": [
+        "ci-plan",
+        "ci-required"
+      ],
+      "excluded_concurrency": {
+        "ci-plan": null,
+        "ci-required": null
+      },
+      "metadata_gates": {
+        "ci-required": {
+          "timeout": 5,
+          "command": "python3 -B Scripts/verify-ci-metadata.py --check 'CI Required'"
+        }
+      }
+    }
+  }
+}

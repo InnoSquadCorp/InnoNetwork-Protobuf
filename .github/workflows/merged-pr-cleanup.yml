@@ -1,0 +1,45 @@
+name: Merged PR cleanup
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: read
+
+# This is a stateful coordinator; a later notification must not preempt it.
+concurrency:
+  group: merged-pr-cleanup-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.repository == 'InnoSquadCorp/InnoNetwork-Protobuf' &&
+      github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
+      github.workflow_ref == format('{0}/.github/workflows/merged-pr-cleanup.yml@refs/heads/{1}', github.repository, github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    steps:
+      - name: Checkout immutable trusted cleanup source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /Scripts/merged_pr_cleanup.py
+            /Scripts/merged_pr_cleanup_plan.py
+            /Scripts/ci-cleanup-workflows.json
+      - name: Inspect exact merged PR validation (read-only)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLEANUP_SOURCE_SHA: ${{ github.workflow_sha }}
+          # Cancellation permission and activation require separate approval.
+          CLEANUP_ENABLE_WRITES: ''
+        run: python3 -B Scripts/merged_pr_cleanup.py --event "$GITHUB_EVENT_PATH" --dry-run

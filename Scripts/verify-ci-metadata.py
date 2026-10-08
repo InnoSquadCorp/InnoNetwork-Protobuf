@@ -19,7 +19,11 @@ FORMAT = (r'CI validation v2 pr:([1-9][0-9]*) head:([0-9a-f]{40}) '
           r'release:(true|false) asan:(true|false) concurrency:(true|false)')
 TITLE = re.compile(FORMAT)
 METADATA_PREFIX = 'CI metadata-only v1 '
+METADATA_TITLE = re.compile(
+    re.escape(METADATA_PREFIX) + r'pr:([1-9][0-9]*) head:([0-9a-f]{40}) '
+    r'base:([0-9a-f]{40}) action:(edited|labeled|unlabeled) source:([0-9a-f]{40})')
 VERIFY_STEP = 'Verify prior validation for metadata'
+SHA = re.compile(r'[0-9a-f]{40}')
 
 
 def require(value, message):
@@ -50,13 +54,18 @@ class API:
 
     def pages(self, route, key):
         result = []
+        total = None
         for page in range(1, 21):
             data = self.get(route + ('&' if '?' in route else '?') + f'per_page=100&page={page}')
             items = data[key]
-            require(isinstance(items, list), 'malformed API page')
+            count = data.get('total_count')
+            require(isinstance(items, list) and len(items) <= 100 and type(count) is int and count >= 0,
+                    'malformed API page')
+            require(total is None or total == count, 'API inventory changed during pagination')
+            total = count
             result.extend(items)
             if len(items) < 100:
-                require(len(result) == data['total_count'], 'incomplete API inventory')
+                require(len(result) == total, 'incomplete API inventory')
                 return result
         raise ValueError('excessive API pagination')
 
@@ -82,6 +91,49 @@ def belongs_to_other_pr(run, number):
                 for pr in associated) and all(pr['number'] != number for pr in associated))
 
 
+def metadata_run(run, number, head, workflow):
+    """Only a fully bound native metadata title may be excluded from ordering.
+
+    A familiar prefix alone cannot conceal a malformed or manual failure.
+    The current observer is excluded by its separately verified run ID.
+    """
+    title = run.get('display_title')
+    match = METADATA_TITLE.fullmatch(title) if isinstance(title, str) else None
+    return (match is not None and int(match[1]) == number and match[2] == head and
+            run.get('event') == 'pull_request' and run.get('head_sha') == head and
+            run.get('workflow_id') == workflow and run.get('path') == CONFIG['workflow'] and
+            run.get('repository', {}).get('full_name') == CONFIG['repository'])
+
+
+def validation_inventory(runs, own_id, number, head, workflow):
+    require(isinstance(runs, list), 'missing workflow inventory')
+    ids, orders, validations = set(), set(), []
+    for run in runs:
+        require(isinstance(run, dict), 'malformed workflow inventory')
+        identity = run.get('id')
+        require(type(identity) is int and identity > 0 and identity not in ids,
+                'missing or duplicate workflow run identity')
+        ids.add(identity)
+        if identity == own_id or belongs_to_other_pr(run, number) or metadata_run(run, number, head, workflow):
+            continue
+        order = run.get('run_number')
+        require(type(order) is int and order > 0 and order not in orders, 'invalid run ordering')
+        orders.add(order)
+        validations.append(run)
+    require(validations, 'no real validation exists for this head')
+    return validations
+
+
+def merge_tree(api, route, source, base, head):
+    require(isinstance(source, str) and SHA.fullmatch(source), 'invalid validation source')
+    merge = api.get(route + 'git/commits/' + source)
+    require(merge.get('sha') == source and [p['sha'] for p in merge.get('parents', [])] == [base, head],
+            'checkout does not combine the current base and head')
+    tree = merge.get('tree', {}).get('sha')
+    require(isinstance(tree, str) and SHA.fullmatch(tree), 'missing exact validation tree')
+    return tree
+
+
 def prove(api, event, env, check_name='CI Required'):
     repo = CONFIG['repository']
     route = 'repos/' + repo + '/'
@@ -104,27 +156,27 @@ def prove(api, event, env, check_name='CI Required'):
     own_id = int(env['GITHUB_RUN_ID'])
     own = api.get(route + f'actions/runs/{own_id}')
     source = env['GITHUB_SHA']
-    require(own.get('head_sha') == head and own.get('path') == CONFIG['workflow'] and
+    require(own.get('id') == own_id and own.get('head_sha') == head and own.get('path') == CONFIG['workflow'] and
             own.get('event') == 'pull_request' and own.get('repository', {}).get('full_name') == repo,
             'current run is not bound to the PR')
     require(own.get('run_attempt') == int(env['GITHUB_RUN_ATTEMPT']), 'current attempt changed')
     workflow = own['workflow_id']
-    merge = api.get(route + 'git/commits/' + source)
-    require(merge.get('sha') == source and [p['sha'] for p in merge.get('parents', [])] == [base, head],
-            'checkout does not combine the current base and head')
+    require(type(workflow) is int and workflow > 0, 'invalid workflow identity')
+    tree = merge_tree(api, route, source, base, head)
     runs = api.pages(route + f'actions/workflows/{workflow}/runs?head_sha={head}', 'workflow_runs')
-    validations = [r for r in runs if r.get('id') != own_id and
-                   not str(r.get('display_title', '')).startswith(METADATA_PREFIX) and
-                   not belongs_to_other_pr(r, number)]
-    require(validations, 'no real validation exists for this head')
-    require(all(type(r.get('run_number')) is int and r['run_number'] > 0 for r in validations), 'invalid run ordering')
+    validations = validation_inventory(runs, own_id, number, head, workflow)
     listed = max(validations, key=lambda r: r['run_number'])
     run = api.get(route + f"actions/runs/{listed['id']}")
     match = TITLE.fullmatch(run.get('display_title', ''))
     require(match is not None, 'latest validation lacks immutable PR binding')
     n, h, b, definition, *bound_labels = match.groups()
-    require((int(n), h, b, tuple(bound_labels)) == binding(pr) and definition == source,
+    require((int(n), h, b, tuple(bound_labels)) == binding(pr),
             'latest validation used a different head, base, workflow or label set')
+    # GitHub can regenerate a synthetic merge commit for unchanged base/head.
+    # Prove the original validation source independently, including its tree;
+    # never infer equivalence from a shared PR head or a successful title alone.
+    validation_tree = tree if definition == source else merge_tree(api, route, definition, base, head)
+    require(validation_tree == tree, 'latest validation used a different merge tree')
     require(run.get('id') == listed['id'] and run.get('run_number') == listed['run_number'] and
             run.get('workflow_id') == workflow and run.get('path') == CONFIG['workflow'] and
             run.get('event') == 'pull_request' and run.get('head_sha') == head and
@@ -157,20 +209,20 @@ def prove(api, event, env, check_name='CI Required'):
         check = api.get(route + 'check-runs/' + url[len(prefix):])
         require(check.get('name') == name and check.get('app', {}).get('id') == 15368 and
                 check.get('check_suite', {}).get('id') == run['check_suite_id'] and
-                check.get('head_sha') in {head, source} and check.get('status') == 'completed' and
+                check.get('head_sha') in {head, definition} and check.get('status') == 'completed' and
                 check.get('conclusion') == 'success' and check.get('details_url') ==
                 f"https://github.com/{repo}/actions/runs/{run['id']}/job/{job['id']}", 'unverified native check')
     final = api.get(route + f"actions/runs/{run['id']}")
     require(all(final.get(k) == run.get(k) for k in ('id', 'run_number', 'run_attempt', 'head_sha', 'workflow_id',
                 'path', 'event', 'display_title', 'status', 'conclusion', 'check_suite_id')), 'validation changed during proof')
     latest = api.pages(route + f'actions/workflows/{workflow}/runs?head_sha={head}', 'workflow_runs')
-    require(not any(r.get('run_number', 0) > run['run_number'] and r.get('id') != own_id and
-                    not str(r.get('display_title', '')).startswith(METADATA_PREFIX) and
-                    not belongs_to_other_pr(r, number) for r in latest),
-            'newer real validation appeared')
+    newest = max(validation_inventory(latest, own_id, number, head, workflow), key=lambda r: r['run_number'])
+    require(all(newest.get(k) == run.get(k) for k in ('id', 'run_number', 'run_attempt', 'status', 'conclusion')),
+            'newer real validation appeared or validation inventory changed')
     final_pr = api.get(route + f'pulls/{number}')
     require(final_pr.get('state') == 'open' and binding(final_pr) == binding(pr), 'PR changed during proof')
-    return dict(run=run['id'], attempt=attempt, head=head, base=base, source=source, check=check_name)
+    return dict(run=run['id'], attempt=attempt, head=head, base=base, source=source,
+                validation_source=definition, tree=tree, check=check_name)
 
 
 def main():

@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location('gate', ROOT / 'Scripts/verify-ci-metadata.py')
 gate = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gate)
-HEAD, BASE, SOURCE = 'a' * 40, 'b' * 40, 'c' * 40
+HEAD, BASE, SOURCE, TREE = 'a' * 40, 'b' * 40, 'c' * 40, 'e' * 40
 REPO = gate.CONFIG['repository']
 
 
@@ -25,8 +25,9 @@ class Transcript:
                         run_attempt=1, check_suite_id=200,
                         display_title=f'CI validation v2 pr:45 head:{HEAD} base:{BASE} source:{SOURCE} release:false asan:false concurrency:false')
         self.own = {**self.run, 'id':20, 'run_number':20, 'status':'in_progress', 'conclusion':None,
-                    'display_title':gate.METADATA_PREFIX+'current'}
-        self.merge = dict(sha=SOURCE, parents=[dict(sha=BASE),dict(sha=HEAD)])
+                    'display_title':f'{gate.METADATA_PREFIX}pr:45 head:{HEAD} base:{BASE} action:edited source:{SOURCE}'}
+        self.merge = dict(sha=SOURCE, parents=[dict(sha=BASE),dict(sha=HEAD)], tree=dict(sha=TREE))
+        self.other_merges = {}
         self.runs = [self.run,self.own]
         self.jobs,self.checks = [],{}
         for i,name in enumerate(gate.CONFIG['checks']):
@@ -52,7 +53,7 @@ class Transcript:
             if self.reads==1 and getattr(self,'run_read',False) and self.run_race:self.run_race(result)
             self.run_read=True
             return result
-        if '/git/commits/' in path:return copy.deepcopy(self.merge)
+        if '/git/commits/' in path:return copy.deepcopy(self.other_merges.get(path.rsplit('/',1)[1], self.merge))
         if '/check-runs/' in path:return copy.deepcopy(self.checks[int(path.rsplit('/',1)[1])])
         if '/actions/runs/' in path:
             return copy.deepcopy(next(r for r in self.runs if r['id']==int(path.rsplit('/',1)[1])))
@@ -75,7 +76,8 @@ class Transcript:
 class MetadataGateTests(unittest.TestCase):
     def test_current_success_is_read_only_and_bound(self):
         t=Transcript();proof=t.prove()
-        self.assertEqual(proof,dict(run=10,attempt=1,head=HEAD,base=BASE,source=SOURCE,check='CI Required'))
+        self.assertEqual(proof,dict(run=10,attempt=1,head=HEAD,base=BASE,source=SOURCE,
+                                  validation_source=SOURCE,tree=TREE,check='CI Required'))
         for name in gate.CONFIG['checks']:
             t=Transcript();self.assertEqual(gate.prove(t,t.event,t.env,name)['check'],name)
 
@@ -153,3 +155,66 @@ class MetadataGateTests(unittest.TestCase):
         for associations in [None,[],[dict(number=45),dict(number=46)],[dict(number='46')]]:
             t=Transcript();t.runs.append({**other,'pull_requests':associations})
             with self.subTest(associations=associations),self.assertRaises(ValueError):t.prove()
+
+    def test_regenerated_merge_requires_same_exact_parents_and_tree(self):
+        old_source = 'd' * 40
+        t=Transcript()
+        t.run['display_title']=t.run['display_title'].replace(SOURCE,old_source)
+        t.other_merges[old_source]={**copy.deepcopy(t.merge),'sha':old_source}
+        t.checks[400]['head_sha']=old_source
+        proof=t.prove()
+        self.assertEqual(proof['validation_source'],old_source)
+        self.assertEqual(proof['source'],SOURCE)
+        self.assertEqual(proof['tree'],TREE)
+        mutations=[lambda x:x.other_merges[old_source]['tree'].update(sha='f'*40),
+                   lambda x:x.other_merges[old_source]['parents'].reverse(),
+                   lambda x:x.other_merges[old_source]['parents'][0].update(sha='f'*40),
+                   lambda x:x.other_merges[old_source].update(sha='f'*40),
+                   lambda x:x.other_merges[old_source].pop('tree'),
+                   lambda x:x.checks[400].update(head_sha=SOURCE)]
+        for mutate in mutations:
+            candidate=copy.deepcopy(t);candidate.reads=0;candidate.pages_read=0
+            mutate(candidate)
+            with self.subTest(mutate=mutate),self.assertRaises(ValueError):candidate.prove()
+
+    def test_current_merge_also_requires_exact_tree_evidence(self):
+        for tree in [None,{},dict(sha=''),dict(sha='e'*39),dict(sha=123)]:
+            t=Transcript();t.merge['tree']=tree or {}
+            with self.subTest(tree=tree),self.assertRaises(ValueError):t.prove()
+
+    def test_unknown_or_manual_metadata_prefix_cannot_hide_newer_failure(self):
+        for change in [dict(display_title=gate.METADATA_PREFIX+'unknown'),
+                       dict(event='workflow_dispatch'),dict(path='.github/workflows/unknown.yml'),
+                       dict(workflow_id=999),dict(repository=dict(full_name='foreign/repo')),
+                       dict(display_title=f'{gate.METADATA_PREFIX}pr:46 head:{HEAD} base:{BASE} action:edited source:{SOURCE}')]:
+            t=Transcript();t.runs.append({**t.own,'id':21,'run_number':21,'status':'completed',
+                                         'conclusion':'failure',**change})
+            with self.subTest(change=change),self.assertRaises(ValueError):t.prove()
+
+    def test_valid_metadata_is_an_observer_not_real_validation(self):
+        t=Transcript();t.runs.append({**t.own,'id':21,'run_number':21,'status':'completed','conclusion':'failure'})
+        self.assertEqual(t.prove()['run'],10)
+        t.runs=[t.own,t.runs[-1]]
+        with self.assertRaises(ValueError):t.prove()
+
+    def test_malformed_or_racing_inventory_never_hides_failures(self):
+        mutations=[lambda runs:runs.append(copy.deepcopy(runs[0])),
+                   lambda runs:runs.append({**runs[0],'id':21,'run_number':None}),
+                   lambda runs:runs.append({**runs[0],'id':21}),
+                   lambda runs:runs.clear(),
+                   lambda runs:runs[0].update(run_attempt=2,status='in_progress',conclusion=None),
+                   lambda runs:runs[0].update(status='completed',conclusion='failure')]
+        for mutate in mutations:
+            t=Transcript();t.list_race=mutate
+            with self.subTest(mutate=mutate),self.assertRaises(ValueError):t.prove()
+
+    def test_api_inventory_requires_stable_complete_nonnegative_total(self):
+        class Pages(gate.API):
+            def __init__(self, pages):self.responses=iter(pages)
+            def get(self, path):return next(self.responses)
+        cases=[[dict(total_count=True,workflow_runs=[])],
+               [dict(total_count=-1,workflow_runs=[])],
+               [dict(total_count=2,workflow_runs=[{}])],
+               [dict(total_count=101,workflow_runs=[{}]*100),dict(total_count=102,workflow_runs=[{},{}])]]
+        for pages in cases:
+            with self.subTest(pages=pages),self.assertRaises(ValueError):Pages(pages).pages('test','workflow_runs')

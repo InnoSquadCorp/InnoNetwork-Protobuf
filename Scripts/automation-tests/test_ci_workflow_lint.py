@@ -3,6 +3,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import shutil
 from pathlib import Path
 import subprocess
 import tarfile
@@ -44,6 +45,24 @@ class WorkflowLintTests(unittest.TestCase):
                     executable = p.unpack_verified(data, digest, destination)
                     self.assertEqual(executable.read_bytes(), content)
                     self.assertEqual(executable.stat().st_mode & 0o777, 0o700)
+
+    def test_parallel_lint_cleanup_cannot_race_github_fixture_copy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); source=root/'.github'; source.mkdir()
+            (source/'core-candidate.sha').write_text('immutable input')
+            projection=p.projection_directory(root)
+            with projection as transient:
+                transient=Path(transient)
+                self.assertEqual(transient.parent, root)
+                self.assertFalse(transient.is_relative_to(source))
+                (transient/'ci.yml').write_text('lint-only')
+                def copy_and_cleanup(src,dst):
+                    # Force linter cleanup exactly during the sibling fixture's
+                    # enumeration/copy window. The copied tree stays stable.
+                    projection.cleanup()
+                    return shutil.copy2(src,dst)
+                shutil.copytree(source,root/'fixture',copy_function=copy_and_cleanup)
+                self.assertEqual((root/'fixture/core-candidate.sha').read_text(),'immutable input')
 
     def test_queue_lint_exception_cannot_hide_invalid_or_new_queues(self):
         with tempfile.TemporaryDirectory() as directory:
