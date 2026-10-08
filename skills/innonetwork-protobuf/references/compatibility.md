@@ -1,6 +1,6 @@
 # Versions, products and migration
 
-The validated pair is adapter **6.1.1**, tag commit
+The historical validated pair is adapter **6.1.1**, tag commit
 `5e5f8316c94358235c3997e70e5e97aadc11df3a`, and Core **6.1.1**, tag commit
 `44e4ca28c50c03f817231a077c0f3bdfdbc859c8`. The adapter manifest pins Core exactly,
 including the compiler-host support contract. A broad Core 6.1.x declaration in
@@ -14,6 +14,11 @@ not invent earlier versions or validate future patches. For each new patch,
 verify the actual tag/commit and inspect manifest/API/release-note changes, then
 test the consumer with that patch. Preserve its version instead of copying the
 fixture pin. Recheck 6.2+, prereleases and moving branches separately.
+
+The original annotated adapter 6.1.1 tag was withdrawn after this evidence was
+recorded. A newly issued 6.1.1 tag must be checked with the release identity mode
+in the skill's validation helper. The old SHA and bundled lock are historical
+inputs, not claims about the current remote tag.
 
 ## Package and compiler surface
 

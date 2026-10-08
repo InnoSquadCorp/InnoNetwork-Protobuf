@@ -199,9 +199,22 @@ jobs:
           RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
           RELEASE_SHA: ${{ needs.resolve-release.outputs.commit_sha }}
         run: bash Scripts/validate_published_consumer.sh "${RELEASE_TAG#v}" "$RELEASE_SHA"
+      - name: Validate skill examples against the published release identity
+        env:
+          RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.commit_sha }}
+          RELEASE_TAG_OBJECT: ${{ needs.resolve-release.outputs.tag_object }}
+        run: |
+          env -u INNONETWORK_LOCAL_PATH python3 skills/innonetwork-protobuf/scripts/validate_consumer.py \
+            --release-tag "$RELEASE_TAG" --expected-adapter-revision "$RELEASE_SHA" \
+            --expected-tag-object "$RELEASE_TAG_OBJECT" --scratch-path "$RUNNER_TEMP/protobuf-skill-release"
       - name: Preserve public consumer lockfile
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: published-consumer-lock
-          path: ${{ runner.temp }}/protobuf-published.*/consumer/Package.resolved
+          path: |
+            ${{ runner.temp }}/protobuf-published.*/consumer/Package.resolved
+            ${{ runner.temp }}/protobuf-skill-release/skill-runs/**/evidence.json
+            ${{ runner.temp }}/protobuf-skill-release/skill-runs/**/*.log
+            ${{ runner.temp }}/protobuf-skill-release/skill-runs/**/consumer/Package.resolved

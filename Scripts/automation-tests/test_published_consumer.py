@@ -76,3 +76,11 @@ exec "$REAL_RUBY" "$@"
         self.assertIn('inputs.publish',job['if'])
         self.assertEqual(job['permissions'],{'contents':'read'})
         self.assertEqual(job['steps'][0]['with']['ref'],'${{ needs.resolve-release.outputs.commit_sha }}')
+
+    def test_skill_consumer_is_bound_to_release_identity_and_preserves_evidence(self):
+        job=yaml(ROOT/'.github/workflows/release.yml')['jobs']['published-consumer']
+        step=next(s for s in job['steps'] if s.get('name')=='Validate skill examples against the published release identity')
+        self.assertEqual(step['env']['RELEASE_SHA'],'${{ needs.resolve-release.outputs.commit_sha }}')
+        self.assertEqual(step['env']['RELEASE_TAG_OBJECT'],'${{ needs.resolve-release.outputs.tag_object }}')
+        self.assertIn('--expected-tag-object "$RELEASE_TAG_OBJECT"',step['run'])
+        self.assertIn('evidence.json',job['steps'][-1]['with']['path'])

@@ -6,8 +6,9 @@ description: Implement, test, diagnose, or migrate Swift Protocol Buffers over H
 # InnoNetwork-Protobuf
 
 Use the consumer's resolved adapter and Core contracts. This skill supports
-stable **6.1.x** (`>=6.1.0 <6.2.0`); its exact validated baseline is the adapter's
-**6.1.1 tag** with **InnoNetwork 6.1.1**. A support range is not evidence that
+stable **6.1.x** (`>=6.1.0 <6.2.0`); its historical validated baseline is the adapter's
+withdrawn **6.1.1 tag** with **InnoNetwork 6.1.1**. A newly issued tag requires
+its own identity and consumer validation. A support range is not evidence that
 every patch exists or has been tested. See [support.json](references/support.json).
 
 ## Establish both dependencies
@@ -70,8 +71,19 @@ exercise macros, optional/empty bodies, directional media, limits, retry reuse,
 auth preflight, payload-free errors, unknown fields and operation deadlines.
 
 ```bash
-python3 scripts/validate_consumer.py --scratch-path /tmp/protobuf-skill-validation
+python3 scripts/validate_consumer.py --release-tag 6.1.1 \
+  --expected-adapter-revision "$REVIEWED_ADAPTER_SHA" \
+  --expected-tag-object "$REVIEWED_ANNOTATED_TAG_OBJECT" \
+  --scratch-path /tmp/protobuf-skill-validation
 ```
+
+Obtain both expected identities from the reviewed release record. The helper
+compares them with the official remote annotated tag before resolution and again
+after tests; arbitrary input SHAs alone cannot pass. It changes only the adapter
+seed revision in an isolated copy, then requires actual SwiftPM resolution and
+all eight clean remote checkout identities to match. The bundled lock and prior
+evidence remain historical. Without release arguments, the helper attempts only
+the historical pinned fixture and does not validate a newly issued tag.
 
 Run from this skill directory or use the helper's absolute path. It copies the
 fixture outside the skill, verifies remote pins, active graph and clean checkout

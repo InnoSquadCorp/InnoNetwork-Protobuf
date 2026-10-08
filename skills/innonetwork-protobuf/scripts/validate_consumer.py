@@ -2,6 +2,7 @@
 """Validate an isolated exact-revision consumer and record reproducible evidence."""
 
 import argparse
+import copy
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -18,7 +19,13 @@ def main():
     """Validate the pinned consumer and persist evidence for success or failure."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-path", type=Path, help="External SwiftPM cache and logs, retained after the run")
+    parser.add_argument("--release-tag", help="Validate this current annotated release tag")
+    parser.add_argument("--expected-adapter-revision", help="Reviewed commit bound by release identity validation")
+    parser.add_argument("--expected-tag-object", help="Annotated tag object bound by release identity validation")
     args = parser.parse_args()
+    release_values = (args.release_tag, args.expected_adapter_revision, args.expected_tag_object)
+    if any(release_values) and not all(release_values):
+        parser.error("Release mode requires tag, expected adapter revision and expected tag object together")
     skill = Path(__file__).resolve().parents[1]
     scratch = (args.scratch_path or Path(tempfile.mkdtemp(prefix="innonetwork-protobuf-skill-"))).resolve()
     if scratch == skill or skill in scratch.parents:
@@ -69,7 +76,8 @@ def main():
         evidence["supported_range"] = support["supported_range"]
         evidence["include_prereleases"] = support["include_prereleases"]
         evidence["validation_scope"] = support["baseline_kind"]
-        expected = support["resolved_dependencies"]
+        expected = copy.deepcopy(support["resolved_dependencies"])
+        evidence["historical_baseline"] = {k: support[k] for k in ("version", "revision", "tag_object") }
         check(expected["innonetwork-protobuf"] == {k: support[k] for k in ("repository", "version", "revision")},
               "Library support and dependency record disagree")
         source = skill / "assets/consumer"
@@ -80,6 +88,32 @@ def main():
             check(pin["kind"] == "remoteSourceControl" and pin["location"] == baseline["repository"]
                   and pin["state"] == {k: baseline[k] for k in ("version", "revision") if k in baseline},
                   f"{identity} fixture pin differs from support record")
+        release_identity = None
+        if args.release_tag:
+            release_version = args.release_tag[1:] if args.release_tag.startswith("v") else args.release_tag
+            check(release_version == support["version"], "Release mode must use the fixture's exact adapter version")
+            check(all(re.fullmatch(r"[0-9a-f]{40}", value) for value in
+                      (args.expected_adapter_revision, args.expected_tag_object)), "Expected identities must be exact SHAs")
+
+            def remote_identity(label):
+                repository = "https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git"
+                check(support["repository"] == repository, "Unexpected adapter repository")
+                ref = "refs/tags/" + args.release_tag
+                output = command(label, ["git", "ls-remote", repository, ref, ref + "^{}"])
+                entries = [line.split() for line in output.splitlines()]
+                check(len(entries) == 2 and all(len(row) == 2 and re.fullmatch(r"[0-9a-f]{40}", row[0]) for row in entries),
+                      "An existing annotated remote tag and peeled commit are required")
+                refs = {name: sha for sha, name in entries}
+                check(set(refs) == {ref, ref + "^{}"}, "Unexpected remote tag identity")
+                check(refs[ref] == args.expected_tag_object and refs[ref + "^{}"] == args.expected_adapter_revision,
+                      "Official annotated tag differs from reviewed release identity")
+                return {"tag": args.release_tag, "tag_object": refs[ref], "revision": refs[ref + "^{}"]}
+
+            release_identity = remote_identity("release-tag-before")
+            evidence["release_identity"] = release_identity
+            evidence["validation_scope"] = "current_annotated_release_tag"
+            expected["innonetwork-protobuf"]["revision"] = release_identity["revision"]
+            original_pins["innonetwork-protobuf"]["state"]["revision"] = release_identity["revision"]
         evidence["swift"] = command("swift-version", ["swift", "--version"])
         evidence["xcode"] = command("xcode-version", ["xcodebuild", "-version"])
         evidence["source_sha256"] = {
@@ -89,9 +123,29 @@ def main():
         }
         package = run / "consumer"
         shutil.copytree(source, package, ignore=shutil.ignore_patterns(".build", ".swiftpm", ".DS_Store"))
+        if release_identity:
+            lock_path = package / "Package.resolved"
+            lock = json.loads(lock_path.read_text())
+            for pin in lock["pins"]:
+                if pin["identity"] == "innonetwork-protobuf":
+                    pin["state"]["revision"] = release_identity["revision"]
+            lock_path.write_text(json.dumps(lock, indent=2) + "\n")
+        # A release seed changes only in the isolated copy; source evidence remains historical.
+        evidence["seed_input_sha256"] = {
+            relative: hashlib.sha256((package / relative).read_bytes()).hexdigest()
+            for relative in evidence["source_sha256"]
+        }
         options = ["--package-path", package, "--scratch-path", scratch]
         command("resolve", ["swift", "package", *options, "resolve"], timeout=600)
         check(pins(package / "Package.resolved") == original_pins, "Resolution changed the fixture's exact pins")
+        evidence["validation_input_sha256"] = {
+            relative: hashlib.sha256((package / relative).read_bytes()).hexdigest()
+            for relative in evidence["source_sha256"]
+        }
+        for relative, digest in evidence["seed_input_sha256"].items():
+            if relative != "Package.resolved":
+                check(evidence["validation_input_sha256"][relative] == digest,
+                      f"Resolution changed consumer source: {relative}")
         graph = json.loads(command("graph", ["swift", "package", *options, "show-dependencies", "--format", "json"], timeout=120))
         nodes = {n["identity"]: n for n in flatten(graph)}
         # SwiftPM can omit SwiftSyntax from show-dependencies when using a prebuilt.
@@ -138,7 +192,7 @@ def main():
                                          "suites": sum(int(x) for _, x in summaries), "failures": 0,
                                          "strict_concurrency": "complete", "warnings_as_errors": True}
         check(pins(package / "Package.resolved") == original_pins, "Tests changed exact pins")
-        for relative, digest in evidence["source_sha256"].items():
+        for relative, digest in evidence["validation_input_sha256"].items():
             check(hashlib.sha256((package / relative).read_bytes()).hexdigest() == digest,
                   f"Validation changed consumer input: {relative}")
         for identity, dependency in resolved.items():
@@ -147,6 +201,8 @@ def main():
                   f"{identity} revision changed during build")
             check(not command(identity + "-final-status", ["git", "-C", checkout, "status", "--porcelain", "--untracked-files=all"]),
                   f"{identity} changed during build")
+        if release_identity:
+            check(remote_identity("release-tag-after") == release_identity, "Release tag changed during validation")
         evidence["status"] = "passed"
     except (OSError, RuntimeError, ValueError, KeyError) as error:
         evidence["status"] = "failed"
