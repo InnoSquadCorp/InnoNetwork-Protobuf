@@ -1,0 +1,7 @@
+interface:
+  display_name: "InnoNetwork Protobuf"
+  short_description: "Build typed Protobuf HTTP requests with InnoNetwork"
+  default_prompt: "Use $innonetwork-protobuf to implement and test HTTP protobuf endpoints against this project’s resolved adapter and Core versions."
+
+policy:
+  allow_implicit_invocation: true

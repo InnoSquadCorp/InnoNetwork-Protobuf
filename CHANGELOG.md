@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Add the library-owned Codex/Claude skill for stable 6.1.x, based on the exact
+  6.1.1 adapter/Core tags, with a standalone consumer and validation helper.
+
 ## 6.1.1 — binary contract redesign
 
 - Breaking candidate refinement: separate encoding/decoding options and MIME policy;

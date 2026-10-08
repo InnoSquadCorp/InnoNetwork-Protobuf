@@ -1,5 +1,13 @@
 # InnoNetwork-Protobuf
 
+## AI development skill
+
+The library-owned [InnoNetwork-Protobuf skill](skills/innonetwork-protobuf/SKILL.md)
+supports stable 6.1.x, with an exact 6.1.1 adapter/Core consumer baseline. Use it
+with Codex or Claude Code for macro-first integration, codec policy and testing.
+See [installation and source ownership](skills/README.md) and
+[validation evidence](skills/validation.md).
+
 The standalone [validation app](Examples/ValidationApp/README.md) exercises the
 macro-first adapter through real URLSession sockets and persistent
 sandbox storage. Its local-pair/device results are not published-dependency or
