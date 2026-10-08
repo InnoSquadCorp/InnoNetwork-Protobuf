@@ -1,6 +1,6 @@
-# Contributing to InnoNetworkProtobuf
+# Contributing to InnoNetwork-Protobuf
 
-Thanks for contributing to InnoNetworkProtobuf.
+Thanks for contributing to InnoNetwork-Protobuf.
 
 ## Before You Start
 
@@ -10,10 +10,18 @@ Thanks for contributing to InnoNetworkProtobuf.
 
 ## Development Setup
 
+The default commands resolve exactly published InnoNetwork 6.1.1.
+For immutable paired validation, set
+`INNONETWORK_LOCAL_PATH` to a clean checkout at `.github/core-candidate.sha`.
+This pin now matches the published 6.1.1 commit. Unset that variable before
+checking the public dependency/release path.
+
 ```bash
 swift test
 bash Scripts/check_docs_contract_sync.sh
 swift build --target InnoNetworkProtobufDocSmoke
+swift run --package-path Examples/ConsumerSmoke ConsumerSmoke
+swift run --package-path Examples/ConsumerSmoke LegacyConsumerSmoke
 ```
 
 ## Pull Request Expectations
@@ -21,7 +29,7 @@ swift build --target InnoNetworkProtobufDocSmoke
 - Keep public API changes narrow and justified.
 - Update documentation when behavior or contracts change.
 - Add or update tests for any user-visible behavior.
-- Keep examples aligned with `DefaultNetworkClient` plus `ProtobufAPIDefinition`.
+- Keep examples aligned with `EncodedRequest.protobuf` and core `EncodedRequestClient` / `OperationNetworkClient`.
 - Document any required matching `InnoNetwork` version or branch.
 
 ## Public API Policy
@@ -34,5 +42,5 @@ swift build --target InnoNetworkProtobufDocSmoke
 
 - Tests pass locally.
 - Docs contract sync passes.
-- Consumer smoke build still succeeds.
+- Both preferred and compatibility product consumers build and run.
 - Changelog and release notes are updated when behavior changes.

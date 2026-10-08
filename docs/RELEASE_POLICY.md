@@ -5,19 +5,33 @@
 - Public releases follow semantic versioning from `3.0.1`.
 - Stable API must not break in patch or minor releases.
 - Breaking changes require a major version bump and migration guidance.
+- The adapter reset is `6.1.1`, requiring the public encoded-request boundary
+  available in core `6.1.1`. Versions need not be numerically identical.
 
 ## Release Process
 
-1. Update `CHANGELOG.md`
-2. Confirm `docs/releases/<version>.md`
-3. Push an annotated tag such as `3.0.1`
-4. Let the `Release` workflow run:
+1. Publish and verify the matching InnoNetwork tag first. For the 6.x line,
+   Exactly published InnoNetwork `6.1.1` must resolve without `INNONETWORK_LOCAL_PATH`.
+2. Resolve, build, test, and run both smoke targets without a local override.
+3. Update `CHANGELOG.md` and confirm `docs/releases/<version>.md`.
+4. Push an annotated tag such as `6.1.1`.
+5. Let the `Release` workflow run:
    - `swift test`
    - docs contract sync
    - doc smoke build/run
-   - consumer smoke build
-   - GitHub Release creation
-5. If the tag push does not start automation, run the `Release` workflow manually with the same version string, for example `3.0.1`.
+   - consumer smoke build/run against the local adapter and remote core
+   - No publication on tag push or default manual validation.
+6. After exact-SHA validation, run the workflow on the existing annotated tag
+   with the same version and explicit `publish: true`. The tag must belong to
+   reviewed main, and committed notes must say `Release-Status: Ready`.
+   Publication is a separate write-permission job under the release environment;
+   configure required environment reviewers before enabling production use.
+7. After publication, resolve both remote tags from a clean external consumer
+   and verify the resolved revisions. The pre-tag local-adapter fixture is not
+   a substitute for this post-publication check.
+
+Local compatibility evidence is recorded in [COMPATIBILITY_6_0.md](COMPATIBILITY_6_0.md).
+Passing it does not authorize a push, tag, workflow dispatch or publication.
 
 ## Support Posture
 

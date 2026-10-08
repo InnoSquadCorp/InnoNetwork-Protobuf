@@ -1,44 +1,75 @@
 {
   "jobs": {
     "build-and-test": {
-      "name": "Build and Test",
-      "runs-on": "macos-15",
-      "timeout-minutes": 45,
+      "needs": "ci-plan",
+      "if": "fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test",
+      "name": "Build and Test \u2014 Xcode ${{ matrix.xcode.label }}",
+      "runs-on": "${{ matrix.xcode.runner }}",
+      "timeout-minutes": 90,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "xcode": [
+            {
+              "label": "26.0.1",
+              "runner": "macos-15",
+              "path": "/Applications/Xcode_26.0.1.app"
+            },
+            {
+              "label": "27.0",
+              "runner": "xcode-27",
+              "path": "/Applications/Xcode.app"
+            }
+          ]
+        }
+      },
       "steps": [
         {
           "name": "Checkout",
-          "uses": "actions/checkout@v4"
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false
+          }
         },
         {
           "name": "Select Xcode",
-          "run": "sudo xcode-select -s /Applications/Xcode_26.0.1.app"
+          "run": "sudo xcode-select -s ${{ matrix.xcode.path }}"
         },
         {
           "name": "Show toolchain versions",
           "run": "xcodebuild -version\nxcrun swift --version\n"
         },
         {
-          "name": "Resolve dependencies",
-          "run": "xcrun swift package resolve"
+          "name": "Validate exact public candidate",
+          "env": {
+            "VALIDATION_MODE": "${{ fromJSON(needs.ci-plan.outputs.plan).lane == 'release-validation' && 'release' || 'standard' }}"
+          },
+          "run": "env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh \"$VALIDATION_MODE\""
         },
         {
-          "name": "Build",
-          "run": "xcrun swift build"
-        },
-        {
-          "name": "Test",
-          "run": "xcrun swift test"
+          "name": "Preserve synthetic validation reports",
+          "if": "always()",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "with": {
+            "name": "public-${{ matrix.xcode.label }}",
+            "path": "${{ runner.temp }}/protobuf-validation.*/cold.json\n${{ runner.temp }}/protobuf-validation.*/warm.json\n"
+          }
         }
       ]
     },
     "docs-contract-sync": {
+      "needs": "ci-plan",
+      "if": "fromJSON(needs.ci-plan.outputs.plan).jobs.docs-contract-sync",
       "name": "Docs / Contract Sync",
       "runs-on": "macos-15",
       "timeout-minutes": 30,
       "steps": [
         {
           "name": "Checkout",
-          "uses": "actions/checkout@v4"
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false
+          }
         },
         {
           "name": "Select Xcode",
@@ -46,117 +77,284 @@
         },
         {
           "name": "Resolve dependencies",
-          "run": "xcrun swift package resolve"
+          "if": "${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}",
+          "run": "xcrun swift package resolve\nruby Scripts/check_dependency_integrity.rb .build Package.resolved\n"
         },
         {
           "name": "Verify docs and stability contract",
-          "run": "bash Scripts/check_docs_contract_sync.sh"
+          "run": "bash Scripts/check_docs_contract_sync.sh\nruby Scripts/test_release_gate.rb\n"
         },
         {
           "name": "Build documentation smoke target",
+          "if": "${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}",
           "run": "xcrun swift build --target InnoNetworkProtobufDocSmoke"
         },
         {
           "name": "Run documentation smoke target",
+          "if": "${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}",
           "run": "xcrun swift run InnoNetworkProtobufDocSmoke"
         }
       ]
     },
     "consumer-smoke": {
+      "needs": [
+        "ci-plan",
+        "build-and-test"
+      ],
+      "if": "fromJSON(needs.ci-plan.outputs.plan).jobs.consumer-smoke",
       "name": "Consumer Smoke",
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 5,
+      "steps": [
+        {
+          "name": "Confirm consumer coverage from the successful public matrix",
+          "env": {
+            "PUBLIC_MATRIX_RESULT": "${{ needs.build-and-test.result }}"
+          },
+          "run": "[[ \"$PUBLIC_MATRIX_RESULT\" == success ]] || {\n  echo 'The public Xcode matrix must succeed before confirming consumer coverage.' >&2\n  exit 1\n}\necho 'Preferred, compatibility and macro-off consumers ran in each public Xcode matrix entry.'\n"
+        }
+      ]
+    },
+    "apple-platform-builds": {
+      "needs": "ci-plan",
+      "if": "fromJSON(needs.ci-plan.outputs.plan).jobs.apple-platform-builds",
+      "name": "Build \u2014 ${{ matrix.runtime }}",
       "runs-on": "macos-15",
-      "timeout-minutes": 30,
+      "timeout-minutes": 45,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "include": [
+            {
+              "runtime": "iOS",
+              "sdk": "iphonesimulator",
+              "triple": "arm64-apple-ios16.0-simulator"
+            },
+            {
+              "runtime": "tvOS",
+              "sdk": "appletvos",
+              "triple": "arm64-apple-tvos16.0"
+            },
+            {
+              "runtime": "watchOS",
+              "sdk": "watchos",
+              "triple": "arm64_32-apple-watchos9.0"
+            },
+            {
+              "runtime": "visionOS",
+              "sdk": "xros",
+              "triple": "arm64-apple-xros1.0"
+            }
+          ]
+        }
+      },
       "steps": [
         {
           "name": "Checkout",
-          "uses": "actions/checkout@v4"
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false
+          }
         },
         {
           "name": "Select Xcode",
           "run": "sudo xcode-select -s /Applications/Xcode_26.0.1.app"
         },
         {
-          "name": "Build consumer smoke package",
-          "working-directory": "Examples/ConsumerSmoke",
-          "run": "xcrun swift build"
+          "name": "Require SDK",
+          "run": "xcrun --sdk '${{ matrix.sdk }}' --show-sdk-path"
+        },
+        {
+          "name": "Build ${{ matrix.runtime }}",
+          "env": {
+            "RUNTIME": "${{ matrix.runtime }}",
+            "SDK": "${{ matrix.sdk }}",
+            "TRIPLE": "${{ matrix.triple }}"
+          },
+          "run": "bash Scripts/build_apple_platform_target.sh \"$RUNTIME\" \"$SDK\" \"$TRIPLE\"\n"
+        }
+      ]
+    },
+    "static-contracts": {
+      "if": "${{ !(github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) }}",
+      "name": "Static Contracts (no dependency resolution)",
+      "runs-on": "macos-15",
+      "timeout-minutes": 10,
+      "steps": [
+        {
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "run": "bash Scripts/check_static_contracts.sh"
+        }
+      ]
+    },
+    "paired-candidate": {
+      "needs": "ci-plan",
+      "if": "fromJSON(needs.ci-plan.outputs.plan).jobs.paired-candidate",
+      "name": "Paired candidate \u2014 Xcode ${{ matrix.xcode.label }}",
+      "runs-on": "${{ matrix.xcode.runner }}",
+      "timeout-minutes": 60,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "xcode": [
+            {
+              "label": "26.0.1",
+              "runner": "macos-15",
+              "path": "/Applications/Xcode_26.0.1.app"
+            },
+            {
+              "label": "27.0",
+              "runner": "xcode-27",
+              "path": "/Applications/Xcode.app"
+            }
+          ]
+        }
+      },
+      "env": {
+        "INNONETWORK_LOCAL_PATH": "${{ github.workspace }}/.build/paired-core"
+      },
+      "steps": [
+        {
+          "name": "Checkout adapter candidate",
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "ref": "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Validate immutable paired core revision",
+          "id": "core",
+          "shell": "bash",
+          "run": "set -euo pipefail\nruby Scripts/test_core_candidate.rb\nsha=$(ruby Scripts/check_core_candidate.rb)\necho \"sha=$sha\" >> \"$GITHUB_OUTPUT\"\n"
+        },
+        {
+          "name": "Checkout exact core candidate",
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "repository": "InnoSquadCorp/InnoNetwork",
+            "ref": "${{ steps.core.outputs.sha }}",
+            "path": ".build/paired-core",
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Verify pair and toolchain",
+          "env": {
+            "EXPECTED_CORE": "${{ steps.core.outputs.sha }}"
+          },
+          "run": "ruby Scripts/check_core_candidate.rb \"$INNONETWORK_LOCAL_PATH\"\nsudo xcode-select -s '${{ matrix.xcode.path }}'\nxcodebuild -version\nxcrun swift --version\nprintf 'Core: %s\\nAdapter: %s\\n' \"$EXPECTED_CORE\" \"$(git rev-parse HEAD)\"\n"
+        },
+        {
+          "name": "Validate immutable pair through the shared contract",
+          "run": "bash Scripts/validate_candidate.sh standard"
+        },
+        {
+          "name": "Platform macro builds on the compatibility toolchain",
+          "if": "matrix.xcode.label == '26.0.1'",
+          "run": "bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator\nbash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0\nbash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0\nbash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0\n"
+        },
+        {
+          "name": "Preserve synthetic validation reports",
+          "if": "always()",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "with": {
+            "name": "paired-${{ matrix.xcode.label }}",
+            "path": "${{ runner.temp }}/protobuf-validation.*/cold.json\n${{ runner.temp }}/protobuf-validation.*/warm.json\n"
+          }
         }
       ]
     }
   },
   "release": {
     "validate-release": {
-      "name": "Validate Release",
-      "runs-on": "macos-15",
-      "timeout-minutes": 60,
+      "needs": "resolve-release",
+      "name": "Validate Release \u2014 Xcode ${{ matrix.xcode.label }}",
+      "runs-on": "${{ matrix.xcode.runner }}",
+      "timeout-minutes": 120,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "xcode": [
+            {
+              "label": "26.0.1",
+              "runner": "macos-15",
+              "path": "/Applications/Xcode_26.0.1.app"
+            },
+            {
+              "label": "27.0",
+              "runner": "xcode-27",
+              "path": "/Applications/Xcode.app"
+            }
+          ]
+        }
+      },
       "permissions": {
         "contents": "read"
       },
       "steps": [
         {
           "name": "Checkout",
-          "uses": "actions/checkout@v4",
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
           "with": {
-            "ref": "${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}"
+            "persist-credentials": false,
+            "fetch-depth": 0,
+            "ref": "${{ needs.resolve-release.outputs.commit_sha }}"
+          }
+        },
+        {
+          "name": "Checkout immutable identity policy",
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "persist-credentials": false,
+            "ref": "${{ github.workflow_sha }}",
+            "path": ".ci-release-policy",
+            "sparse-checkout": "Scripts/release-ref.py",
+            "sparse-checkout-cone-mode": false
           }
         },
         {
           "name": "Select Xcode",
-          "run": "sudo xcode-select -s /Applications/Xcode_26.0.1.app"
+          "run": "sudo xcode-select -s ${{ matrix.xcode.path }}"
         },
         {
-          "name": "Resolve dependencies",
-          "run": "xcrun swift package resolve"
+          "name": "Validate candidate and publication intent",
+          "id": "candidate",
+          "env": {
+            "VERSION": "${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}",
+            "PUBLISH": "${{ github.event_name == 'workflow_dispatch' && inputs.publish }}"
+          },
+          "run": "mode=validate\nif [[ \"$PUBLISH\" == true ]]; then mode=publish; fi\nbash Scripts/check_release_gate.sh \"$mode\" \"$VERSION\"\necho \"sha=$(git rev-parse HEAD)\" >> \"$GITHUB_OUTPUT\"\necho \"version=$VERSION\" >> \"$GITHUB_OUTPUT\"\n"
         },
         {
-          "name": "Verify docs and stability contract",
-          "run": "bash Scripts/check_docs_contract_sync.sh"
+          "name": "Contracts and release negative controls",
+          "run": "bash Scripts/check_docs_contract_sync.sh\nruby Scripts/test_release_gate.rb\n"
         },
         {
-          "name": "Build and run documentation smoke target",
-          "run": "xcrun swift build --target InnoNetworkProtobufDocSmoke\nxcrun swift run InnoNetworkProtobufDocSmoke\n"
+          "name": "Validate complete public release candidate",
+          "run": "env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh release"
         },
         {
-          "name": "Build consumer smoke package",
-          "working-directory": "Examples/ConsumerSmoke",
-          "run": "xcrun swift build"
+          "name": "Five-platform verification (macOS above)",
+          "if": "matrix.xcode.label == '26.0.1'",
+          "run": "bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator\nbash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0\nbash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0\nbash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0\n"
         },
         {
-          "name": "Run tests",
-          "run": "xcrun swift test"
-        }
-      ]
-    },
-    "publish-release": {
-      "name": "Publish Release",
-      "needs": "validate-release",
-      "runs-on": "ubuntu-latest",
-      "permissions": {
-        "contents": "write"
-      },
-      "steps": [
-        {
-          "name": "Checkout",
-          "uses": "actions/checkout@v4",
+          "name": "Preserve synthetic validation reports",
+          "if": "always()",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
           "with": {
-            "ref": "${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}"
-          }
-        },
-        {
-          "name": "Prepare release notes",
-          "id": "notes",
-          "shell": "bash",
-          "run": "set -euo pipefail\nversion=\"${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}\"\nnotes_source=\"docs/releases/${version}.md\"\nnotes_target=\"release-notes.md\"\n\nif [[ -f \"$notes_source\" ]]; then\n  cp \"$notes_source\" \"$notes_target\"\nelse\n  printf '%s\\n' \\\n    \"# InnoNetworkProtobuf ${version}\" \\\n    \"\" \\\n    \"See CHANGELOG.md for the summarized release history.\" > \"$notes_target\"\nfi\n\necho \"version=${version}\" >> \"$GITHUB_OUTPUT\"\necho \"notes_path=${notes_target}\" >> \"$GITHUB_OUTPUT\"\n"
-        },
-        {
-          "name": "Create GitHub Release",
-          "uses": "softprops/action-gh-release@v2",
-          "with": {
-            "tag_name": "${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}",
-            "name": "InnoNetworkProtobuf ${{ steps.notes.outputs.version }}",
-            "body_path": "${{ steps.notes.outputs.notes_path }}"
+            "name": "release-${{ matrix.xcode.label }}",
+            "path": "${{ runner.temp }}/protobuf-validation.*/cold.json\n${{ runner.temp }}/protobuf-validation.*/warm.json\n"
           }
         }
       ]
     }
-  }
+  },
+  "_provenance": "Local cleanup contract 2026-10-08: public matrix owns consumer execution, docs-only retains compiled docs, public/pair separation preserved, exact release identity unchanged."
 }

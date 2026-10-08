@@ -49,12 +49,84 @@ jobs:
           python3 -B -m unittest discover -s Scripts/automation-tests -v
           python3 -B Scripts/check-ci-workflows.py
 
+  static-contracts:
+    if: ${{ !(github.event_name == 'pull_request' && (((github.event.action == 'labeled' || github.event.action == 'unlabeled') && github.event.label.name && github.event.label.name != 'release-validation') || (github.event.action == 'edited' && !github.event.changes.base))) }}
+    name: Static Contracts (no dependency resolution)
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: bash Scripts/check_static_contracts.sh
+
   build-and-test:
     needs: ci-plan
     if: fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test
-    name: Build and Test
+    name: Build and Test — Xcode ${{ matrix.xcode.label }}
+    runs-on: ${{ matrix.xcode.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode:
+          - label: "26.0.1"
+            runner: macos-15
+            path: /Applications/Xcode_26.0.1.app
+          - label: "27.0"
+            runner: xcode-27
+            path: /Applications/Xcode.app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: sudo xcode-select -s ${{ matrix.xcode.path }}
+
+      - name: Show toolchain versions
+        run: |
+          xcodebuild -version
+          xcrun swift --version
+
+      - name: Validate exact public candidate
+        env:
+          VALIDATION_MODE: ${{ fromJSON(needs.ci-plan.outputs.plan).lane == 'release-validation' && 'release' || 'standard' }}
+        run: env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh "$VALIDATION_MODE"
+
+      - name: Preserve synthetic validation reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-${{ matrix.xcode.label }}
+          path: |
+            ${{ runner.temp }}/protobuf-validation.*/cold.json
+            ${{ runner.temp }}/protobuf-validation.*/warm.json
+
+  apple-platform-builds:
+    needs: ci-plan
+    if: fromJSON(needs.ci-plan.outputs.plan).jobs.apple-platform-builds
+    name: Build — ${{ matrix.runtime }}
     runs-on: macos-15
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runtime: iOS
+            sdk: iphonesimulator
+            triple: arm64-apple-ios16.0-simulator
+          - runtime: tvOS
+            sdk: appletvos
+            triple: arm64-apple-tvos16.0
+          - runtime: watchOS
+            sdk: watchos
+            triple: arm64_32-apple-watchos9.0
+          - runtime: visionOS
+            sdk: xros
+            triple: arm64-apple-xros1.0
 
     steps:
       - name: Checkout
@@ -65,19 +137,16 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
-      - name: Show toolchain versions
+      - name: Require SDK
+        run: xcrun --sdk '${{ matrix.sdk }}' --show-sdk-path
+
+      - name: Build ${{ matrix.runtime }}
+        env:
+          RUNTIME: ${{ matrix.runtime }}
+          SDK: ${{ matrix.sdk }}
+          TRIPLE: ${{ matrix.triple }}
         run: |
-          xcodebuild -version
-          xcrun swift --version
-
-      - name: Resolve dependencies
-        run: xcrun swift package resolve
-
-      - name: Build
-        run: xcrun swift build
-
-      - name: Test
-        run: xcrun swift test
+          bash Scripts/build_apple_platform_target.sh "$RUNTIME" "$SDK" "$TRIPLE"
 
   docs-contract-sync:
     needs: ci-plan
@@ -96,41 +165,112 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
       - name: Resolve dependencies
-        run: xcrun swift package resolve
+        if: ${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}
+        run: |
+          xcrun swift package resolve
+          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
 
       - name: Verify docs and stability contract
-        run: bash Scripts/check_docs_contract_sync.sh
+        run: |
+          bash Scripts/check_docs_contract_sync.sh
+          ruby Scripts/test_release_gate.rb
 
       - name: Build documentation smoke target
+        if: ${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}
         run: xcrun swift build --target InnoNetworkProtobufDocSmoke
 
       - name: Run documentation smoke target
+        if: ${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}
         run: xcrun swift run InnoNetworkProtobufDocSmoke
 
   consumer-smoke:
-    needs: ci-plan
+    needs: [ci-plan, build-and-test]
     if: fromJSON(needs.ci-plan.outputs.plan).jobs.consumer-smoke
     name: Consumer Smoke
-    runs-on: macos-15
-    timeout-minutes: 30
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Checkout
+      - name: Confirm consumer coverage from the successful public matrix
+        env:
+          PUBLIC_MATRIX_RESULT: ${{ needs.build-and-test.result }}
+        run: |
+          [[ "$PUBLIC_MATRIX_RESULT" == success ]] || {
+            echo 'The public Xcode matrix must succeed before confirming consumer coverage.' >&2
+            exit 1
+          }
+          echo 'Preferred, compatibility and macro-off consumers ran in each public Xcode matrix entry.'
+
+  paired-candidate:
+    needs: ci-plan
+    if: fromJSON(needs.ci-plan.outputs.plan).jobs.paired-candidate
+    name: Paired candidate — Xcode ${{ matrix.xcode.label }}
+    runs-on: ${{ matrix.xcode.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode:
+          - label: '26.0.1'
+            runner: macos-15
+            path: /Applications/Xcode_26.0.1.app
+          - label: '27.0'
+            runner: xcode-27
+            path: /Applications/Xcode.app
+    env:
+      INNONETWORK_LOCAL_PATH: ${{ github.workspace }}/.build/paired-core
+    steps:
+      - name: Checkout adapter candidate
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Validate immutable paired core revision
+        id: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby Scripts/test_core_candidate.rb
+          sha=$(ruby Scripts/check_core_candidate.rb)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact core candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: InnoSquadCorp/InnoNetwork
+          ref: ${{ steps.core.outputs.sha }}
+          path: .build/paired-core
+          persist-credentials: false
+      - name: Verify pair and toolchain
+        env:
+          EXPECTED_CORE: ${{ steps.core.outputs.sha }}
+        run: |
+          ruby Scripts/check_core_candidate.rb "$INNONETWORK_LOCAL_PATH"
+          sudo xcode-select -s '${{ matrix.xcode.path }}'
+          xcodebuild -version
+          xcrun swift --version
+          printf 'Core: %s\nAdapter: %s\n' "$EXPECTED_CORE" "$(git rev-parse HEAD)"
+      - name: Validate immutable pair through the shared contract
+        run: bash Scripts/validate_candidate.sh standard
+      - name: Platform macro builds on the compatibility toolchain
+        if: matrix.xcode.label == '26.0.1'
+        run: |
+          bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator
+          bash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0
+          bash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0
+          bash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
-
-      - name: Build consumer smoke package
-        working-directory: Examples/ConsumerSmoke
-        run: xcrun swift build
+      - name: Preserve synthetic validation reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: paired-${{ matrix.xcode.label }}
+          path: |
+            ${{ runner.temp }}/protobuf-validation.*/cold.json
+            ${{ runner.temp }}/protobuf-validation.*/warm.json
 
   ci-required:
     name: CI Required
     if: ${{ always() }}
-    needs: ['ci-plan', 'policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke']
+    needs: ['ci-plan', 'policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke', 'apple-platform-builds', 'static-contracts', 'paired-candidate']
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

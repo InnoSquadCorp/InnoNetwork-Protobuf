@@ -15,8 +15,9 @@ Include:
 
 ## Supported Versions
 
-- Before `3.0.1`, only the default branch is considered supported.
-- After `3.0.1`, the latest `3.x` release line is supported for security fixes on a best-effort basis.
+- Until 6.0 is published, 3.0.1 remains the supported public release; 6.0 is a development candidate.
+- After 6.0 publication, the latest 6.x is the primary supported line. Critical 3.x reports remain triaged on a best-effort basis; no routine 3.x feature backports are promised.
+- Codec byte budgets do not bound intermediate encoder allocations. Do not log message bodies or credential-bearing codec errors. Select server-specific request, response and nesting limits.
 
 ## Disclosure
 

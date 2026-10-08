@@ -89,5 +89,9 @@ class PRMetadataAdmissionTests(unittest.TestCase):
         for block in re.split(r'\n  [\w-]+:\n', source.split('jobs:\n',1)[1])[1:]:
             if '    name: CI Plan\n' in block or '    name: CI Required\n' in block:
                 continue
+            if '    name: Static Contracts (no dependency resolution)\n' in block:
+                self.assertEqual(condition(source, 'static-contracts'), condition(source, 'ci-plan'))
+                self.assertNotIn('    needs:', block)
+                continue
             self.assertRegex(block, r'    needs: (?:ci-plan|\[ci-plan[,\]])')
             self.assertNotIn('always()', block.split('    steps:', 1)[0])

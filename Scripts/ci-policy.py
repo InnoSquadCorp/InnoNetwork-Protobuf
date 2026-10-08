@@ -8,8 +8,8 @@ import re
 import subprocess
 import sys
 
-JOBS = ('policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke')
-DOC_JOBS = ('docs-contract-sync',)
+JOBS = ('policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke', 'apple-platform-builds', 'static-contracts', 'paired-candidate')
+DOC_JOBS = ('docs-contract-sync', 'static-contracts')
 NON_PR_SKIP = set()
 SHA = re.compile(r"[0-9a-f]{40}")
 PR_ACTIONS = {"opened", "synchronize", "reopened", "edited", "labeled", "unlabeled"}
@@ -74,7 +74,7 @@ def make_plan(event_name, event, paths):
             raise ValueError("unsupported merge queue event")
     elif event_name != "workflow_dispatch":
         raise ValueError("unsupported CI event")
-    selected = {"policy"}
+    selected = {"policy", "static-contracts"}
     reasons = []
     for path in paths:
         impact, reason = path_impact(path)

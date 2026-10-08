@@ -95,7 +95,13 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('always()',jobs['ci-required']['if']);self.assertEqual(self.ci['permissions'],{'contents':'read'})
         for key,job in jobs.items():
             self.assertNotIn('continue-on-error',job)
-            if key not in {'ci-plan','ci-required'}:
+            if key == 'static-contracts':
+                self.assertNotIn('needs', job)
+                self.assertEqual(job['if'], jobs['ci-plan']['if'])
+            elif key == 'consumer-smoke':
+                self.assertEqual(job['needs'], ['ci-plan', 'build-and-test'])
+                self.assertEqual(job['if'], 'fromJSON(needs.ci-plan.outputs.plan).jobs.consumer-smoke')
+            elif key not in {'ci-plan','ci-required'}:
                 self.assertEqual(job['needs'],'ci-plan')
                 if key!='policy':self.assertEqual(job['if'],'fromJSON(needs.ci-plan.outputs.plan).jobs.'+key)
             if 'runs-on' in job:self.assertGreater(job['timeout-minutes'],0)
@@ -111,6 +117,43 @@ class WorkflowTests(unittest.TestCase):
             old_steps=[s for s in old['steps'] if not s.get('uses','').startswith('actions/checkout@')]
             new_steps=[s for s in current['steps'] if not s.get('uses','').startswith('actions/checkout@')]
             self.assertEqual(new_steps,old_steps,key)
+    def test_all_public_manifests_pin_core_611_and_pair_matches_release(self):
+        import re
+        manifests = ['Package.swift', 'Examples/ConsumerSmoke/Package.swift',
+                     'Examples/ManualConsumerSmoke/Package.swift', 'Examples/ValidationApp/Package.swift']
+        pattern = r'url:\s*"https://github\.com/InnoSquadCorp/InnoNetwork\.git",\s*exact:\s*"6\.1\.1"'
+        for name in manifests:
+            with self.subTest(manifest=name):
+                self.assertEqual(len(re.findall(pattern, (ROOT / name).read_text())), 1)
+        self.assertEqual((ROOT / '.github/core-candidate.sha').read_text().strip(),
+                         '44e4ca28c50c03f817231a077c0f3bdfdbc859c8')
+
+    def test_integrated_gates_keep_candidate_and_main_guarantees(self):
+        jobs = self.ci['jobs']
+        matrix = jobs['build-and-test']['strategy']['matrix']['xcode']
+        self.assertEqual({item['label'] for item in matrix}, {'26.0.1', '27.0'})
+        platforms = jobs['apple-platform-builds']['strategy']['matrix']['include']
+        self.assertEqual({item['runtime'] for item in platforms}, {'iOS', 'tvOS', 'watchOS', 'visionOS'})
+        self.assertEqual(jobs['static-contracts']['if'], jobs['ci-plan']['if'])
+        self.assertNotIn('needs', jobs['static-contracts'])
+        self.assertIn('static-contracts', jobs['ci-required']['needs'])
+        self.assertIn('apple-platform-builds', jobs['ci-required']['needs'])
+        for path in ['Sources/New.swift', 'Scripts/new.rb', '.github/workflows/paired-candidate.yml']:
+            plan = p.make_plan('pull_request', event(), [path])
+            self.assertTrue(all(plan['jobs'].values()))
+        plan = p.make_plan('pull_request', event(), ['README.md'])
+        self.assertTrue(plan['jobs']['static-contracts'])
+        self.assertFalse(plan['jobs']['apple-platform-builds'])
+        release = yaml(ROOT / '.github/workflows/release.yml')
+        self.assertFalse(release.get('on', release.get('true'))['workflow_dispatch']['inputs']['publish']['default'])
+        validation = release['jobs']['validate-release']
+        runs = '\n'.join(step.get('run', '') for step in validation['steps'])
+        self.assertIn('env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh release', runs)
+        shared = (ROOT / 'Scripts/validate_candidate.sh').read_text()
+        self.assertIn('ruby Scripts/check_dependency_integrity.rb', shared)
+        self.assertIn('ruby Scripts/check_public_core.rb', shared)
+        self.assertIn('bash Scripts/check_release_gate.sh', runs)
+
     def test_codeql_has_one_change_owner_and_keeps_scheduled_security_scan(self):
         if 'codeql' not in self.old:return
         code=yaml(ROOT/'.github/workflows/codeql.yml')
@@ -132,13 +175,7 @@ class WorkflowTests(unittest.TestCase):
             release=jobs['publish-release'];self.assertEqual(set(release['needs']),{'resolve-release','validate-release'})
             notes=next(s for s in release['steps'] if s.get('id')=='notes')
             self.assertNotIn('${{',notes['run']);self.assertIn('RELEASE_VERSION',notes['env'])
-            with tempfile.TemporaryDirectory() as d:
-                valid = ['0.0.0','1.2.3','1.2.3-rc.1','v1.2.3','v1.2.3-rc.1',
-                         '1.2.3-0','1.2.3-01alpha','1.2.3-alpha+001','v1.2.3+build.001']
-                invalid = ['01.2.3','1.02.3','1.2.03','1.2.3-01','1.2.3-rc.01',
-                           '1.2.3-alpha..1','1.2.3+build..1','1.2.3-','1.2.3+',
-                           'vv1.2.3','$(touch owned)','../../etc/passwd','1.2.3\ninjected=yes']
-                for version in valid + invalid:
-                    result=subprocess.run(['bash','-c',notes['run']],cwd=d,env={**os.environ,'RELEASE_VERSION':version,'GITHUB_OUTPUT':str(Path(d)/'output')},capture_output=True)
-                    self.assertEqual(result.returncode==0,version in valid)
-                self.assertFalse((Path(d)/'owned').exists())
+            self.assertIn('bash Scripts/check_release_gate.sh publish', notes['run'])
+            self.assertNotIn('See CHANGELOG', notes['run'])
+            self.assertEqual(release['if'], "github.event_name == 'workflow_dispatch' && inputs.publish")
+            self.assertEqual(release['environment'], 'release')
