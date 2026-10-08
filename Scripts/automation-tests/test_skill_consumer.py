@@ -35,7 +35,11 @@ class SkillConsumerTests(unittest.TestCase):
             def run(argv, *, stdout, stderr, check, timeout):
                 """Write deterministic command output with no external processes."""
                 label = Path(stdout.name).stem
-                self.assertEqual(stderr, subprocess.STDOUT)
+                if label == "graph":
+                    self.assertTrue(str(stderr.name).endswith("graph.stderr.log"))
+                    stderr.write("warning: 'consumer': dependency 'swift-syntax' is not used by any target\n")
+                else:
+                    self.assertEqual(stderr, subprocess.STDOUT)
                 self.assertFalse(check)
                 self.assertGreater(timeout, 0)
                 if label == failure:
@@ -73,6 +77,9 @@ class SkillConsumerTests(unittest.TestCase):
                     ]
                     (scratch / "workspace-state.json").write_text(json.dumps({"object": {"dependencies": dependencies}}))
                 elif label == "graph":
+                    if tag_case == "malformed-graph":
+                        stdout.write("not JSON")
+                        return subprocess.CompletedProcess(argv, 0)
                     stdout.write(json.dumps({"identity": "consumer", "dependencies": [
                         {"identity": identity, "url": pin["repository"], "version": pin.get("version", "unspecified"),
                          "path": str(scratch / "checkouts" / identity)}
@@ -97,6 +104,9 @@ class SkillConsumerTests(unittest.TestCase):
             summary = json.loads(output.getvalue())
             evidence = json.loads(Path(summary["evidence"]).read_text())
             logs = {Path(entry["log"]).stem: Path(entry["log"]).read_text() for entry in evidence["commands"]}
+            for entry in evidence["commands"]:
+                if "stderr_log" in entry:
+                    logs[Path(entry["log"]).stem + "-stderr"] = Path(entry["stderr_log"]).read_text()
             self.assertIn("finished_at", evidence)
             self.assertEqual(summary["status"], evidence["status"])
             self.assertEqual((SCRIPT.parents[1] / "assets/consumer/Package.resolved").read_bytes(), baseline_bytes)
@@ -182,6 +192,21 @@ class SkillConsumerTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(evidence["release_identity"]["tag"], "v6.1.1")
         self.assertIn("refs/tags/v6.1.1", evidence["commands"][0]["argv"])
+
+    def test_graph_warning_is_preserved_separately_from_json(self):
+        result, evidence, logs = self.validate(release=True)
+        self.assertEqual(result, 0)
+        self.assertTrue(logs["graph"].startswith("{"))
+        self.assertIn("swift-syntax", logs["graph-stderr"])
+        self.assertNotIn("warning:", logs["graph"])
+        self.assertTrue(any("stderr_log" in entry for entry in evidence["commands"]))
+
+    def test_malformed_graph_stdout_still_fails_closed(self):
+        result, evidence, logs = self.validate(release=True, tag_case="malformed-graph")
+        self.assertEqual(result, 1)
+        self.assertEqual(evidence["status"], "failed")
+        self.assertIn("graph-stderr", logs)
+        self.assertNotIn("swift-test", logs)
 
 if __name__ == '__main__':
     unittest.main()

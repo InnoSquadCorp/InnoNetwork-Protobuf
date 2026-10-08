@@ -3,6 +3,7 @@
 
 import argparse
 import copy
+from contextlib import ExitStack
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -41,14 +42,19 @@ def main():
         if not condition:
             raise RuntimeError(message)
 
-    def command(label, argv, timeout=60):
+    def command(label, argv, timeout=60, structured_output=False):
         """Run a bounded command, retaining its output and failure evidence."""
         log = run / (label + ".log")
         entry = {"argv": [str(a) for a in argv], "log": str(log), "timeout_seconds": timeout}
         evidence["commands"].append(entry)
-        with log.open("w") as output:
+        with log.open("w") as output, ExitStack() as stack:
+            error_output = subprocess.STDOUT
+            if structured_output:
+                error_log = run / (label + ".stderr.log")
+                entry["stderr_log"] = str(error_log)
+                error_output = stack.enter_context(error_log.open("w"))
             try:
-                result = subprocess.run(entry["argv"], stdout=output, stderr=subprocess.STDOUT,
+                result = subprocess.run(entry["argv"], stdout=output, stderr=error_output,
                                         check=False, timeout=timeout)
             except subprocess.TimeoutExpired as error:
                 entry.update(exit_code=None, timed_out=True)
@@ -146,7 +152,7 @@ def main():
             if relative != "Package.resolved":
                 check(evidence["validation_input_sha256"][relative] == digest,
                       f"Resolution changed consumer source: {relative}")
-        graph = json.loads(command("graph", ["swift", "package", *options, "show-dependencies", "--format", "json"], timeout=120))
+        graph = json.loads(command("graph", ["swift", "package", *options, "show-dependencies", "--format", "json"], timeout=120, structured_output=True))
         nodes = {n["identity"]: n for n in flatten(graph)}
         # SwiftPM can omit SwiftSyntax from show-dependencies when using a prebuilt.
         # Verify its resolved checkout through workspace state instead of ignoring it.
