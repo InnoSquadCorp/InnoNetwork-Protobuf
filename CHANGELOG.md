@@ -8,7 +8,7 @@
 - Remove hand-written Empty message; use generated Empty or explicit HTTP no-content.
 - Adopt application/protobuf, explicit legacy/missing-header compatibility, depth and byte budgets.
 - Normalize codec failures and share core retry/cancellation/operation behavior.
-- Require SwiftProtobuf 1.38.1 and core 6.1.x; enable the adapter Macros trait by default.
+- Require SwiftProtobuf 1.38.1 and exactly core 6.1.1; enable the adapter Macros trait by default.
 - Add @ProtobufAPIDefinition, ordinary query encoding, optional message bodies,
   explicit no-content response mode, mixed JSON/protobuf and macro-off consumers.
 - Share route/auth/declaration validation through compiler-host support; no SPI

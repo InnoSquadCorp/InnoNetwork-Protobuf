@@ -26,7 +26,7 @@ if let localInnoNetworkPath = ProcessInfo.processInfo.environment[
 } else {
     innoNetworkDependency = .package(
         url: "https://github.com/InnoSquadCorp/InnoNetwork.git",
-        .upToNextMinor(from: "6.1.0"),
+        exact: "6.1.1",
         traits: []
     )
 }

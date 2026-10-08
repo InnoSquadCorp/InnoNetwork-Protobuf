@@ -8,7 +8,8 @@ Status: local preparation only; no remote push, PR creation, merge, tag or relea
 - PR #2 implementation: `d4336c3995ccb1645bf564ac47e87d61720f79ba`
 - PR #1 reviewed intent: `02f84dc122f1e13d8f2bef5ba363a133693c0573`
 - Published Core 6.1.1: `44e4ca28c50c03f817231a077c0f3bdfdbc859c8`
-- Historical paired Core pin remains `91b4b417ca134d0f837f8e000846cd0478e7d439`
+- Current paired Core pin: `44e4ca28c50c03f817231a077c0f3bdfdbc859c8` (published 6.1.1)
+- Earlier paired evidence used `91b4b417ca134d0f837f8e000846cd0478e7d439` and is historical
 
 PR #1's implementation is not merged: its low-level API is SPI in published Core,
 and PR #2 intentionally deletes the legacy adapter. Its existential consumer
@@ -39,7 +40,7 @@ manual and macro-generated encoded requests in tests and the external consumer.
 - `bash Scripts/check_static_contracts.sh`: passed, including 23 Core fixtures,
   34 dependency-integrity fixtures, 12 static workflow fixtures, release gate
   negative controls, isolated Git fixture checks and documentation synchronization.
-- `python -B -m unittest discover -s Scripts/automation-tests -v`: 31 passed.
+- `python -B -m unittest discover -s Scripts/automation-tests -v`: 32 passed.
 - actionlint 1.7.12: passed after applying only the existing source-position-exact
   `concurrency.queue` compatibility exception in `check-ci-workflows.py`.
 - All shell scripts: `bash -n`; all Ruby scripts: `ruby -c`; Git whitespace checks passed.
@@ -55,19 +56,20 @@ but not compiled. No claim of a passing new runtime or remote CI result is made.
 
 1. Resolve the public dependency path with `INNONETWORK_LOCAL_PATH` unset; record
    the resolved Core version and SHA, and confirm 6.1.1 is exercised. Run dependency
-   integrity checks for root and consumers. The existing `6.1.0..<6.2.0` manifest
-   range is unchanged and already admits 6.1.1.
+   integrity checks for root and consumers. All four manifests now specify `exact: "6.1.1"` by explicit user request.
+   The paired checkout pin is the same published commit. No Package.resolved
+   file was generated in this VM; the repository ignores those generated files.
 2. Run Xcode 26/27 build/tests, serial/parallel and TSAN, macro compiler controls,
    documentation/preferred/compatibility consumers, and the macro-disabled consumer.
 3. Run iOS/tvOS/watchOS/visionOS macro builds and actual URLSession loopback cold/warm.
-4. Run historical paired validation separately, including the final graph checks
+4. Run immutable 6.1.1 paired validation separately, including the final graph checks
    for root, ConsumerSmoke and ValidationApp. The previous remote job failed at
    that final graph check after successful consumers/loopback. The exact failing
    workspace-state artifact was not retained; new fixtures cover the name-free
    graph hypothesis, so real Xcode reproduction remains necessary.
 5. Verify published Core 6.1.1's named-security rejection semantics for encoded
    definitions if a consumer adopts `RequestSecurityProviding`. This integration
-   does not introduce that API or change the adapter's minimum Core requirement.
+   does not introduce that API. Core is now pinned exactly to 6.1.1.
 6. Check CI on the eventual exact PR head; keep adapter release notes Draft until
    separately authorized release validation is complete.
 

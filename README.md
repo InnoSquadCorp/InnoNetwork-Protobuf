@@ -16,8 +16,9 @@ The Swift module remains `InnoNetworkProtobuf`; the preferred library product is
 ## Development and publication status
 
 This is the **unpublished, breaking 6.0 development line**. It requires the new
-published InnoNetwork **6.1** contract (including 6.1.1), and SwiftProtobuf 1.38.1+.
-The adapter pins core to 6.1.x while its compiler-host support contract is minor-bound.
+published InnoNetwork **6.1.1** contract, and SwiftProtobuf 1.38.1+.
+The adapter pins Core to exactly 6.1.1, including its compiler-host support contract.
+The paired validation checkout uses the immutable commit behind the same published tag.
 Published core 6.0.0 cannot compile this adapter. No release/tag is changed by
 local development. Published adapter 3.0.1 belongs with its documented core 3.x.
 See [migration](docs/MIGRATION_6_0.md), [release gates](docs/releases/6.0.0.md), and
@@ -49,7 +50,7 @@ guard; the paired workflow separately verifies Core with `check_core_candidate.r
 After both new tags are published:
 
 ```swift
-.package(url: "https://github.com/InnoSquadCorp/InnoNetwork.git", from: "6.1.0"),
+.package(url: "https://github.com/InnoSquadCorp/InnoNetwork.git", exact: "6.1.1"),
 .package(url: "https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git", from: "6.0.0"),
 .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.1"),
 ```

@@ -1,7 +1,8 @@
 # Breaking 6.0 migration
 
-Requires the new core 6.1 contract. Both release candidates must be published
-before remote-only consumers can resolve this pair. Do not modify core 6.0.0 tags.
+Requires exactly published Core 6.1.1. The adapter is still a release candidate;
+its own tag must be published before remote-only consumers can resolve this pair.
+Do not modify existing Core tags.
 
 | Previous API | Replacement |
 | --- | --- |
@@ -27,7 +28,7 @@ protobufOptions/requestOptions/queryEncoder; arbitrary stored properties are not
 silently ignored. Replace old `T: ProtobufAPIDefinition` constraints with core
 `EncodedAPIDefinition`, not a macro type constraint. Both Macros traits can be
 disabled for a manual consumer. The adapter's shared compiler support currently
-pins the core dependency to 6.1.x and SwiftSyntax to 603.0.x.
+pins the core dependency to exactly 6.1.1 and SwiftSyntax to 603.0.x.
 
 Client mocks can conform only to EncodedRequestClient. Operations accept these
 clients and share the same deadline/cancel/result gate as ordinary requests.

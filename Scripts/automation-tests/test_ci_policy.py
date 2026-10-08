@@ -114,6 +114,17 @@ class WorkflowTests(unittest.TestCase):
             old_steps=[s for s in old['steps'] if not s.get('uses','').startswith('actions/checkout@')]
             new_steps=[s for s in current['steps'] if not s.get('uses','').startswith('actions/checkout@')]
             self.assertEqual(new_steps,old_steps,key)
+    def test_all_public_manifests_pin_core_611_and_pair_matches_release(self):
+        import re
+        manifests = ['Package.swift', 'Examples/ConsumerSmoke/Package.swift',
+                     'Examples/ManualConsumerSmoke/Package.swift', 'Examples/ValidationApp/Package.swift']
+        pattern = r'url:\s*"https://github\.com/InnoSquadCorp/InnoNetwork\.git",\s*exact:\s*"6\.1\.1"'
+        for name in manifests:
+            with self.subTest(manifest=name):
+                self.assertEqual(len(re.findall(pattern, (ROOT / name).read_text())), 1)
+        self.assertEqual((ROOT / '.github/core-candidate.sha').read_text().strip(),
+                         '44e4ca28c50c03f817231a077c0f3bdfdbc859c8')
+
     def test_integrated_gates_keep_candidate_and_main_guarantees(self):
         jobs = self.ci['jobs']
         matrix = jobs['build-and-test']['strategy']['matrix']['xcode']

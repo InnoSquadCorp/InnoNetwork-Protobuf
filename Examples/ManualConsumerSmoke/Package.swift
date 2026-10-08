@@ -6,7 +6,7 @@ let core: Package.Dependency
 if let path = ProcessInfo.processInfo.environment["INNONETWORK_LOCAL_PATH"] {
     core = .package(name: "InnoNetwork", path: path, traits: [])
 } else {
-    core = .package(url: "https://github.com/InnoSquadCorp/InnoNetwork.git", .upToNextMajor(from: "6.1.0"), traits: [])
+    core = .package(url: "https://github.com/InnoSquadCorp/InnoNetwork.git", exact: "6.1.1", traits: [])
 }
 let package = Package(
     name: "ManualConsumerSmoke", platforms: [.macOS(.v14)],

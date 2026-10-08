@@ -6,12 +6,12 @@ The approved breaking redesign includes public core encoded requests, shared
 operations/cancellation, explicit HTTP empty semantics, configurable binary codec,
 standard media negotiation, resource budgets and hardened release validation.
 It supersedes the earlier SPI-only compatibility reset and absorbs the former
-encoding/decoding/media/generated-client candidates. Core 6.1 must ship first.
+encoding/decoding/media/generated-client candidates. Core 6.1.1 is published and is the exact dependency pin.
 
 ## Remaining gates
 
 - Local core and adapter regression/integration/platform evidence.
-- Reviewed and published core 6.1; remote-only minimum/latest dependency checks.
+- Remote-only dependency resolution and consumer checks against exactly Core 6.1.1.
 - Exact adapter candidate Xcode 26/27 CI, five platforms, Ready notes and annotated tag.
 - Separate publication approval, then both-remote-tag consumer verification.
 

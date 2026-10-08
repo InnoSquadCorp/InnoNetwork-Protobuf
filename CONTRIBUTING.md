@@ -10,10 +10,11 @@ Thanks for contributing to InnoNetwork-Protobuf.
 
 ## Development Setup
 
-The default commands resolve published InnoNetwork 6.1.x (including 6.1.1).
-For historical paired-candidate validation only, set
+The default commands resolve exactly published InnoNetwork 6.1.1.
+For immutable paired validation, set
 `INNONETWORK_LOCAL_PATH` to a clean checkout at `.github/core-candidate.sha`.
-Unset that variable before checking the public dependency/release path.
+This pin now matches the published 6.1.1 commit. Unset that variable before
+checking the public dependency/release path.
 
 ```bash
 swift test

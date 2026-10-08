@@ -6,7 +6,7 @@ let core: Package.Dependency
 if let path = ProcessInfo.processInfo.environment["INNONETWORK_LOCAL_PATH"] {
     core = .package(name: "InnoNetwork", path: path)
 } else {
-    core = .package(url: "https://github.com/InnoSquadCorp/InnoNetwork.git", .upToNextMinor(from: "6.1.0"))
+    core = .package(url: "https://github.com/InnoSquadCorp/InnoNetwork.git", exact: "6.1.1")
 }
 let package = Package(
     name: "NetworkValidation",

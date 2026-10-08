@@ -23,7 +23,11 @@ documented_stable="$(awk '/^## Stable$/ { active=1; next } /^## / { active=0 } a
   || { echo 'Stable ledger differs from reviewed codec surface' >&2; exit 1; }
 [[ "$(grep -c 'static func protobuf' Sources/InnoNetworkProtobuf/ProtobufCodec.swift)" == 7 ]] \
   || { echo 'Expected five request factories, body encoder and response decoder' >&2; exit 1; }
-grep -Fq '.upToNextMinor(from: "6.1.0")' Package.swift
+for manifest in Package.swift Examples/ConsumerSmoke/Package.swift Examples/ManualConsumerSmoke/Package.swift Examples/ValidationApp/Package.swift; do
+  grep -Fq 'exact: "6.1.1"' "$manifest"
+done
+grep -Fxq '44e4ca28c50c03f817231a077c0f3bdfdbc859c8' .github/core-candidate.sha
+grep -Fq 'exact: "6.1.1"' README.md
 grep -Fq 'from: "1.38.1"' Package.swift
 grep -Fq 'traits: []' Package.swift
 grep -Fq 'traits: []' Examples/ManualConsumerSmoke/Package.swift
