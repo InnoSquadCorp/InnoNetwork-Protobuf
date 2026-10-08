@@ -68,7 +68,7 @@ struct ProtobufRequestSecurityBoundaryTests {
 
         if operationRoute {
             do {
-                _ = try await OperationNetworkClient(client: client).start(secured).value()
+                _ = try await OperationNetworkClient(client: concrete).start(secured).value()
                 Issue.record("Named protobuf credentials unexpectedly succeeded")
             } catch let failure {
                 let expected = NetworkFailure(migratingV5: .underlying(
@@ -98,7 +98,7 @@ struct ProtobufRequestSecurityBoundaryTests {
 
         // The same factory and transport work when named credentials are absent.
         if operationRoute {
-            #expect(try await OperationNetworkClient(client: client).start(base).value() == Google_Protobuf_Empty())
+            #expect(try await OperationNetworkClient(client: concrete).start(base).value() == Google_Protobuf_Empty())
         } else {
             #expect(try await client.request(base) == Google_Protobuf_Empty())
         }
