@@ -2,9 +2,9 @@
 
 [`innonetwork-protobuf`](innonetwork-protobuf/SKILL.md) is the canonical skill for
 implementing and testing Protocol Buffers over HTTP with this library. It targets
-stable 6.1.x and validates the exact 6.1.1 adapter/Core pair. The full directory
-contains portable instructions, references, discovery metadata, an exact-tag
-consumer, a validation helper and the source license notice.
+stable 6.1.x and provides identity-checked validation of the exact 6.1.1 adapter/Core pair. The full directory
+contains portable instructions, references, discovery metadata, a historical exact-tag
+consumer and current-release validation mode, a validation helper and the source license notice.
 
 Copy the complete `innonetwork-protobuf` directory to `.agents/skills/` for Codex
 or `.claude/skills/` for Claude Code. Preserve its resources; compare an existing

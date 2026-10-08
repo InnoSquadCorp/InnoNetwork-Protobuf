@@ -8,7 +8,7 @@
   "repository": "https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git",
   "version": "6.1.1",
   "revision": "5e5f8316c94358235c3997e70e5e97aadc11df3a",
-  "baseline_kind": "verified_release_tag",
+  "baseline_kind": "historical_revoked_release_tag",
   "tag": "6.1.1",
   "tag_object": "e37446078ad3e3e87e565ca2f1ce539ed75bb39e",
   "tag_url": "https://github.com/InnoSquadCorp/InnoNetwork-Protobuf/tree/6.1.1",
@@ -69,5 +69,6 @@
       "version": "604.0.0"
     }
   },
-  "scope": "Exact adapter/Core 6.1.1 tag consumer with SwiftProtobuf 1.38.1 and SwiftSyntax 604.0.0; macro and manual public HTTP paths on macOS. The support range neither invents a 6.1.0 tag nor validates other patches or arbitrary Core 6.1.x versions. Service/device/platform, macro-free, later patches, AI host and public plugin qualification are separate."
+  "scope": "Exact adapter/Core 6.1.1 tag consumer with SwiftProtobuf 1.38.1 and SwiftSyntax 604.0.0; macro and manual public HTTP paths on macOS. The support range neither invents a 6.1.0 tag nor validates other patches or arbitrary Core 6.1.x versions. Service/device/platform, macro-free, later patches, AI host and public plugin qualification are separate.",
+  "baseline_status": "The original 6.1.1 tag was withdrawn. These immutable pins preserve historical evidence; validate a reissued tag with explicit reviewed release identities."
 }

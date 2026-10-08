@@ -1,4 +1,30 @@
-# Protobuf skill validation — 2026-10-08
+# Current release validation
+
+The original 6.1.1 adapter tag described below was withdrawn. Its recorded
+consumer evidence and bundled lock remain unchanged historical artifacts.
+For a newly issued annotated tag, pass the reviewed commit and tag object:
+
+```bash
+python3 skills/innonetwork-protobuf/scripts/validate_consumer.py \
+  --release-tag 6.1.1 --expected-adapter-revision "$REVIEWED_ADAPTER_SHA" \
+  --expected-tag-object "$REVIEWED_ANNOTATED_TAG_OBJECT" \
+  --scratch-path /tmp/protobuf-skill-release
+```
+
+The helper verifies official remote tag and peeled commit identities before
+SwiftPM resolution and after testing. It seeds only the isolated adapter lock
+revision, retaining all other exact dependencies, then verifies the real resolved
+lock, workspace, active graph, clean checkouts and strict Swift tests. Source
+hashes and release-validation input hashes are recorded separately.
+
+The Release workflow runs this mode after publication, using its previously
+validated release tag object and commit outputs. Runtime results for a newly
+issued tag exist only after that job succeeds; local Python fixtures exercise
+orchestration/identity rejection and never count as Swift execution.
+
+## Historical evidence (unchanged baseline)
+
+### Protobuf skill validation — 2026-10-08
 
 The skill is based on remote main and annotated **6.1.1** tag commit
 `5e5f8316c94358235c3997e70e5e97aadc11df3a`. The annotated tag object is
