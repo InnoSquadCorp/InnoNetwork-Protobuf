@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — 6.0 binary contract redesign
+## 6.1.1 — binary contract redesign
 
 - Breaking candidate refinement: separate encoding/decoding options and MIME policy;
   use ProtobufCodecOptions, directional encoded-byte limit names and payload-free
@@ -26,7 +26,7 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog. Released 3.x tags remain stable while
-`main` prepares the coordinated 6.0 line alongside InnoNetwork 6.1.
+`main` prepares the coordinated 6.1.1 release with InnoNetwork 6.1.1.
 
 ## Superseded unpublished SPI proposal (historical)
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
-for path in README.md API_STABILITY.md SECURITY.md CHANGELOG.md docs/MIGRATION_6_0.md docs/IMPLEMENTATION_6_0.md docs/releases/6.0.0.md docs/COMPATIBILITY_6_0.md; do
+for path in README.md API_STABILITY.md SECURITY.md CHANGELOG.md docs/MIGRATION_6_0.md docs/IMPLEMENTATION_6_0.md docs/releases/6.1.1.md docs/COMPATIBILITY_6_0.md; do
   [[ -f "$path" ]] || { echo "Missing $path" >&2; exit 1; }
 done
 for section in Stable 'Provisionally Stable' Internal/Operational; do
@@ -40,8 +40,8 @@ grep -Fq '@ProtobufAPIDefinition' Examples/ConsumerSmoke/Sources/ConsumerSmoke/m
 grep -Fq '@APIDefinition' Examples/ConsumerSmoke/Sources/ConsumerSmoke/main.swift
 grep -Fq 'import InnoNetworkProtobuf' README.md
 grep -Fq 'https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git' README.md
-grep -Fq 'Release-Status:' docs/releases/6.0.0.md
-grep -Fq '**unpublished, breaking 6.0 development line**' README.md
+grep -Fq 'Release-Status:' docs/releases/6.1.1.md
+grep -Fq '**breaking 6.1.1 release line**' README.md
 grep -Fq 'Historical evidence for the superseded SPI adapter' docs/COMPATIBILITY_6_0.md
 if grep -ERn '@_spi|protocol ProtobufAPIDefinition|ProtobufNetworkClient|ProtobufEmptyResponse|HTTPEmptyResponseMessage|protobufEmptyCapable' Sources SmokeTests Examples/ConsumerSmoke/Sources; then
   echo 'Removed runtime surface or SPI reintroduced' >&2; exit 1

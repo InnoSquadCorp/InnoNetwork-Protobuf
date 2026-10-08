@@ -1,7 +1,7 @@
 # InnoNetwork-Protobuf
 
 The standalone [validation app](Examples/ValidationApp/README.md) exercises the
-unpublished macro-first candidate through real URLSession sockets and persistent
+macro-first adapter through real URLSession sockets and persistent
 sandbox storage. Its local-pair/device results are not published-dependency or
 production-service certification.
 
@@ -15,22 +15,19 @@ The Swift module remains `InnoNetworkProtobuf`; the preferred library product is
 
 ## Development and publication status
 
-This is the **unpublished, breaking 6.0 development line**. It requires the new
+This is the **breaking 6.1.1 release line**. It requires the new
 published InnoNetwork **6.1.1** contract, and SwiftProtobuf 1.38.1+.
 The adapter pins Core to exactly 6.1.1, including its compiler-host support contract.
 The paired validation checkout uses the immutable commit behind the same published tag.
 Published core 6.0.0 cannot compile this adapter. No release/tag is changed by
 local development. Published adapter 3.0.1 belongs with its documented core 3.x.
-See [migration](docs/MIGRATION_6_0.md), [release gates](docs/releases/6.0.0.md), and
-[current macro-first validation](docs/MACRO_FIRST_VALIDATION_6_0.md).
+See [migration](docs/MIGRATION_6_0.md), [release gates](docs/releases/6.1.1.md), and
+[historical macro-first validation](docs/MACRO_FIRST_VALIDATION_6_0.md).
 
-The **Paired Candidate (not public release)** workflow checks the immutable core
-revision in `.github/core-candidate.sha` on Xcode 26/27. It also runs the real
-loopback sample in cold and warm processes. This additional lane does not change
-normal CI or the public-dependency release gate: those still require a published
-core 6.1 tag. See [current pre-release evidence](docs/PRE_RELEASE_APP_VALIDATION_2026_09_30.md).
-The subsequent [paired-core completeness record](docs/PAIRED_CORE_COMPLETENESS_2026_10_02.md)
-tracks the newer pin, cache/decoder regressions and fresh local consumer checks.
+The **Paired candidate** jobs are part of the required CI workflow and check
+the immutable Core 6.1.1 revision on Xcode 26.0.1/27.0. Both the public and paired
+lanes run real cold/warm loopback consumers. Release validation additionally runs
+fresh-scratch Thread Sanitizer. See [release evidence and gates](docs/releases/6.1.1.md).
 
 For quick local feedback, run `bash Scripts/check_static_contracts.sh`. The
 independent **Static Contracts (no dependency resolution)** CI job runs this on
@@ -47,11 +44,11 @@ Use a fresh `--scratch-path` to retain failed evidence; pass that same path thro
 Local package paths are checked for consistency, not certified immutable by this
 guard; the paired workflow separately verifies Core with `check_core_candidate.rb`.
 
-After both new tags are published:
+After the adapter 6.1.1 tag is published (Core 6.1.1 is already published):
 
 ```swift
 .package(url: "https://github.com/InnoSquadCorp/InnoNetwork.git", exact: "6.1.1"),
-.package(url: "https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git", from: "6.0.0"),
+.package(url: "https://github.com/InnoSquadCorp/InnoNetwork-Protobuf.git", from: "6.1.1"),
 .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.1"),
 ```
 

@@ -5,16 +5,16 @@
 - Public releases follow semantic versioning from `3.0.1`.
 - Stable API must not break in patch or minor releases.
 - Breaking changes require a major version bump and migration guidance.
-- The adapter reset is `6.0.0`, requiring the public encoded-request boundary
+- The adapter reset is `6.1.1`, requiring the public encoded-request boundary
   available in core `6.1.1`. Versions need not be numerically identical.
 
 ## Release Process
 
-1. Publish and verify the matching InnoNetwork tag first. For the 6.0 line,
+1. Publish and verify the matching InnoNetwork tag first. For the 6.x line,
    Exactly published InnoNetwork `6.1.1` must resolve without `INNONETWORK_LOCAL_PATH`.
 2. Resolve, build, test, and run both smoke targets without a local override.
 3. Update `CHANGELOG.md` and confirm `docs/releases/<version>.md`.
-4. Push an annotated tag such as `6.0.0`.
+4. Push an annotated tag such as `6.1.1`.
 5. Let the `Release` workflow run:
    - `swift test`
    - docs contract sync

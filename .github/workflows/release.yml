@@ -7,7 +7,7 @@ on:
     inputs:
       version:
         description: Existing release version (validation does not create tags)
-        default: "6.0.0"
+        default: "6.1.1"
         required: true
         type: string
       publish:
@@ -175,3 +175,33 @@ jobs:
           target_commitish: ${{ needs.resolve-release.outputs.commit_sha }}
           name: InnoNetworkProtobuf ${{ steps.notes.outputs.version }}
           body_path: ${{ steps.notes.outputs.notes_path }}
+
+  published-consumer:
+    name: Verify Published Tag Consumer
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    needs: [resolve-release, publish-release]
+    runs-on: macos-15
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.resolve-release.outputs.commit_sha }}
+          persist-credentials: false
+      - name: Select compatibility toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.0.1.app
+          xcodebuild -version
+          xcrun swift --version
+      - name: Resolve and execute both published tags
+        env:
+          RELEASE_TAG: ${{ needs.resolve-release.outputs.tag }}
+          RELEASE_SHA: ${{ needs.resolve-release.outputs.commit_sha }}
+        run: bash Scripts/validate_published_consumer.sh "${RELEASE_TAG#v}" "$RELEASE_SHA"
+      - name: Preserve public consumer lockfile
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: published-consumer-lock
+          path: ${{ runner.temp }}/protobuf-published.*/consumer/Package.resolved

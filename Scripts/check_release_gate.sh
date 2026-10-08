@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Inputs are data, never interpolated into generated shell source.
 mode="${1:-validate}"
-tag="${2:-6.0.0}"
+tag="${2:-6.1.1}"
 version="${tag#v}"
 [[ "$mode" == validate || "$mode" == publish ]] || { echo 'Invalid release mode' >&2; exit 64; }
 numeric='(0|[1-9][0-9]*)'

@@ -14,14 +14,14 @@
 - Internal details are not migration-contract items.
 - Changes to SPI imports, local workspace wiring, or adapter internals do not require public migration docs unless they affect documented behavior.
 
-## 3.0.1 to 6.0.0
+## 3.0.1 to 6.1.1
 
 - Upgrade `InnoNetwork` and `InnoNetwork-Protobuf` as a coordinated pair.
 - Use the core 6.1 encoded-request contract, with explicit authentication on
   every factory. No SPI import or Protobuf-specific client is required.
 - The prior development API is replaced, not retained as a second execution
   contract. Follow [the complete migration table](MIGRATION_6_0.md).
-- The 6.0 line supports iOS 16, macOS 14, tvOS 16, watchOS 9, and visionOS 1,
+- The 6.x line supports iOS 16, macOS 14, tvOS 16, watchOS 9, and visionOS 1,
   matching the core package floors.
 
 ### Repository and package naming

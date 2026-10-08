@@ -1,6 +1,6 @@
 # API Stability
 
-This ledger describes the unpublished 6.0 redesign, not the released 3.x API.
+This ledger describes the 6.1.1 redesign, not the released 3.x API.
 No GeneratedClientSupport SPI is imported by this package.
 
 ## Stable
@@ -20,7 +20,7 @@ No GeneratedClientSupport SPI is imported by this package.
 ## Provisionally Stable
 
 - `ProtobufResponseMode` and `@ProtobufAPIDefinition(method:path:auth:response:)`:
-  candidate surface pending both Xcode 26 and 27 external-compiler validation.
+  both-toolchain compiler baseline validated; final release validation still required.
 - The body factory includes a typed optional-message overload. Nil is absent;
   a present zero-byte message remains an HTTP body.
 - Dependency minimums and local coordinated-development override.
