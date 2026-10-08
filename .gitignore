@@ -2,6 +2,7 @@
 .swiftpm/
 **/.swiftpm/
 **/Package.resolved
+!skills/innonetwork-protobuf/assets/consumer/Package.resolved
 DerivedData/
 build/
 docs-build/

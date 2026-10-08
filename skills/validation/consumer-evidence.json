@@ -1,0 +1,127 @@
+{
+  "status": "passed",
+  "started_at": "2026-10-08T12:43:16.594752+00:00",
+  "finished_at": "2026-10-08T12:44:10.903130+00:00",
+  "supported_range": ">=6.1.0 <6.2.0",
+  "include_prereleases": false,
+  "validation_scope": "verified_release_tag",
+  "swift": "swift-driver version: 1.168.6 Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx27.0.0",
+  "xcode": "Xcode 27.0\nBuild version 27A266a",
+  "source_sha256": {
+    "Package.resolved": "73563670912e884fdf06a36c9f86f9c8fd53dd3d5bf1d170869d1ce8750eecb8",
+    "Package.swift": "3afc884e51e9be288443635592494ef5af5647ab13d2eb449ae354e8f4aad8f5",
+    "Sources/ProtobufSkillExample/Endpoints.swift": "018b9ecc2bcafaa3c44e313c82f8628228142aa8dcdf7a3411b93c2c94bf2e3a",
+    "Tests/ProtobufSkillExampleTests/ConsumerTests.swift": "74c90e25be45e6a62a5e07afe2f50e8cdfa9bddf2e45afefa2d99842c55e6bd7"
+  },
+  "dependencies": {
+    "innonetwork": {
+      "version": "6.1.1",
+      "revision": "44e4ca28c50c03f817231a077c0f3bdfdbc859c8",
+      "clean": true,
+      "prebuilt_selected": false
+    },
+    "innonetwork-protobuf": {
+      "version": "6.1.1",
+      "revision": "5e5f8316c94358235c3997e70e5e97aadc11df3a",
+      "clean": true,
+      "prebuilt_selected": false
+    },
+    "swift-asn1": {
+      "version": "1.7.3",
+      "revision": "3b6410f7dee09eb33cdd26260c5fd47fda19b0e2",
+      "clean": true,
+      "prebuilt_selected": false
+    },
+    "swift-crypto": {
+      "version": "5.0.0",
+      "revision": "a9d1d5ab8951ada40cafff8c8e2b551dfde4f390",
+      "clean": true,
+      "prebuilt_selected": false
+    },
+    "swift-http-types": {
+      "version": "1.8.0",
+      "revision": "bff4b6903cdc99dda49649dd52f46c11cfd3ed50",
+      "clean": true,
+      "prebuilt_selected": false
+    },
+    "swift-openapi-runtime": {
+      "version": "1.13.0",
+      "revision": "50ad7976f18fec6c09466d2aebf7be3dc9476cfb",
+      "clean": true,
+      "prebuilt_selected": false
+    },
+    "swift-protobuf": {
+      "version": "1.38.1",
+      "revision": "55d7a1cc5666b85c13464aea1c4b4a90feccb4c8",
+      "clean": true,
+      "prebuilt_selected": false
+    },
+    "swift-syntax": {
+      "version": "604.0.0",
+      "revision": "050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf",
+      "clean": true,
+      "prebuilt_selected": true
+    }
+  },
+  "swift_test_result": {
+    "tests": 14,
+    "suites": 1,
+    "failures": 0,
+    "strict_concurrency": "complete",
+    "warnings_as_errors": true
+  },
+  "baseline": {
+    "adapter": {
+      "version": "6.1.1",
+      "revision": "5e5f8316c94358235c3997e70e5e97aadc11df3a",
+      "tag_object": "e37446078ad3e3e87e565ca2f1ce539ed75bb39e",
+      "github_release": "not_found_at_check"
+    },
+    "core": {
+      "version": "6.1.1",
+      "revision": "44e4ca28c50c03f817231a077c0f3bdfdbc859c8",
+      "constraint": "exact"
+    }
+  },
+  "negative_control": {
+    "wrong_baseline_rejected_before_build": true,
+    "error": "Library support and dependency record disagree"
+  },
+  "source_gates": {
+    "static-contracts": {
+      "result": "passed",
+      "log_sha256": "29cee403ed17b0cce6ae438fb70a2c4ac57ce26356231a3293ceaa28ac13ce87"
+    },
+    "source-tests": {
+      "result": "passed",
+      "log_sha256": "a3d19921194fabf82de694167599537961aed16817c39883c7b9ea7865f0094a",
+      "runtime_tests": 68,
+      "macro_tests": 2
+    },
+    "doc-smoke": {
+      "result": "passed",
+      "log_sha256": "10ea0a6e636dc524f4e85fd3a5ec00b4fb6eaf23e4c004a56a548cac9bdcb075"
+    },
+    "preferred-consumer": {
+      "result": "passed",
+      "log_sha256": "875b24175281c5aba5087654af5c5750f084ba2bc13bdd22bc6962b540080e3e"
+    },
+    "compatibility-consumer": {
+      "result": "passed",
+      "log_sha256": "87da4df415b93b9401a3d3af3b3264e61a230023fa712d099756f2a07e0bd218"
+    },
+    "consumer-integrity": {
+      "result": "passed",
+      "log_sha256": "c7c83306b85586967f076619a2cbcace4e5de8457cb47eef1fa64c1964b6f682",
+      "remote_checkouts": 7,
+      "local_adapter_paths": 1,
+      "scope": "Local changed adapter with exact remote Core; separate from the remote-only skill fixture."
+    }
+  },
+  "limitations": [
+    "Mock transport, macOS Xcode 27 / Swift 6.4 fixture",
+    "No later-patch, alternate-toolchain/platform, live-service or device qualification",
+    "Native AI host results live in central plugin repository",
+    "No claim that source skill is included in existing 6.1.1 tag"
+  ]
+}
