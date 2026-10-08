@@ -65,7 +65,7 @@ jobs:
     if: fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test
     name: Build and Test — Xcode ${{ matrix.xcode.label }}
     runs-on: ${{ matrix.xcode.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -96,14 +96,19 @@ jobs:
           xcrun swift package resolve
           ruby Scripts/check_dependency_integrity.rb .build Package.resolved
 
-      - name: Build
-        run: xcrun swift build
+      - name: Validate exact public candidate
+        env:
+          VALIDATION_MODE: ${{ fromJSON(needs.ci-plan.outputs.plan).lane == 'release-validation' && 'release' || 'standard' }}
+        run: env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh "$VALIDATION_MODE"
 
-      - name: Test
-        run: xcrun swift test
-
-      - name: Compile macro contracts
-        run: ruby Scripts/check_macro_compile_failures.rb
+      - name: Preserve synthetic validation reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: public-${{ matrix.xcode.label }}
+          path: |
+            ${{ runner.temp }}/protobuf-validation.*/cold.json
+            ${{ runner.temp }}/protobuf-validation.*/warm.json
 
   apple-platform-builds:
     needs: ci-plan
@@ -205,10 +210,77 @@ jobs:
 
       - name: Verify macro-disabled consumer graph
         run: bash Scripts/check_macro_disabled_consumer.sh
+  paired-candidate:
+    needs: ci-plan
+    if: fromJSON(needs.ci-plan.outputs.plan).jobs.paired-candidate
+    name: Paired candidate — Xcode ${{ matrix.xcode.label }}
+    runs-on: ${{ matrix.xcode.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode:
+          - label: '26.0.1'
+            runner: macos-15
+            path: /Applications/Xcode_26.0.1.app
+          - label: '27.0'
+            runner: xcode-27
+            path: /Applications/Xcode.app
+    env:
+      INNONETWORK_LOCAL_PATH: ${{ github.workspace }}/.build/paired-core
+    steps:
+      - name: Checkout adapter candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Validate immutable paired core revision
+        id: core
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby Scripts/test_core_candidate.rb
+          sha=$(ruby Scripts/check_core_candidate.rb)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact core candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: InnoSquadCorp/InnoNetwork
+          ref: ${{ steps.core.outputs.sha }}
+          path: .build/paired-core
+          persist-credentials: false
+      - name: Verify pair and toolchain
+        env:
+          EXPECTED_CORE: ${{ steps.core.outputs.sha }}
+        run: |
+          ruby Scripts/check_core_candidate.rb "$INNONETWORK_LOCAL_PATH"
+          sudo xcode-select -s '${{ matrix.xcode.path }}'
+          xcodebuild -version
+          xcrun swift --version
+          printf 'Core: %s\nAdapter: %s\n' "$EXPECTED_CORE" "$(git rev-parse HEAD)"
+      - name: Validate immutable pair through the shared contract
+        run: bash Scripts/validate_candidate.sh standard
+      - name: Platform macro builds on the compatibility toolchain
+        if: matrix.xcode.label == '26.0.1'
+        run: |
+          bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator
+          bash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0
+          bash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0
+          bash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0
+
+      - name: Preserve synthetic validation reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: paired-${{ matrix.xcode.label }}
+          path: |
+            ${{ runner.temp }}/protobuf-validation.*/cold.json
+            ${{ runner.temp }}/protobuf-validation.*/warm.json
+
   ci-required:
     name: CI Required
     if: ${{ always() }}
-    needs: ['ci-plan', 'policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke', 'apple-platform-builds', 'static-contracts']
+    needs: ['ci-plan', 'policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke', 'apple-platform-builds', 'static-contracts', 'paired-candidate']
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

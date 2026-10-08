@@ -36,7 +36,7 @@ positive = <<~SWIFT
       public let body: Google_Protobuf_Empty?
     }
   }
-  @ProtobufAPIDefinition(method: .delete, path: "/users/{id}", auth: .anonymous, response: .noContent)
+  @ProtobufAPIDefinition(method: .delete, path: "/users/{id}", auth: .anonymous, response: .empty())
   private struct Delete {
     typealias APIResponse = EmptyResponse
     let id: Int
@@ -55,10 +55,10 @@ cases = {
   'query-policy-without-query' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; let queryEncoder = URLQueryEncoder() }', 'queryEncoder requires a query'],
   'non-message-body' => ['@ProtobufAPIDefinition(method: .post, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; let body: String }', "'String' conform to 'Message'"],
   'non-message-response' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = String }', "(aka 'String') conform to 'Message'"],
-  'wrong-no-content-response' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous, response: .noContent) struct Bad { typealias APIResponse = Google_Protobuf_Empty }', "be equivalent"],
+  'wrong-no-content-response' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous, response: .empty()) struct Bad { typealias APIResponse = Google_Protobuf_Empty }', "empty HTTP responses require APIResponse"],
   'non-encodable-query' => ['struct Query: Sendable {}\n@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; let query: Query }'.gsub('\\n', "\n"), "'Query' conform to 'Encodable'"],
   'explicit-conformance' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) struct Bad: EncodedAPIDefinition { typealias APIResponse = Google_Protobuf_Empty }', 'owns endpoint conformance'],
-  'static-policy' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; static let protobufOptions = ProtobufCodingOptions() }', 'must be an instance policy property'],
+  'static-policy' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; static let protobufOptions = ProtobufCodecOptions() }', 'must be an instance policy property'],
   'dynamic-method' => ['let chosen = HTTPMethod.get\n@ProtobufAPIDefinition(method: chosen, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty }'.gsub('\\n', "\n"), 'requires an explicit supported HTTP method'],
   'computed-body' => ['@ProtobufAPIDefinition(method: .post, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; var body: Google_Protobuf_Empty { .init() } }', 'body must be an instance stored property'],
   'not-a-struct' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) enum Bad { typealias APIResponse = Google_Protobuf_Empty }', 'can only be attached to a struct'],
@@ -66,6 +66,9 @@ cases = {
   'invalid-route' => ['@ProtobufAPIDefinition(method: .get, path: "/items?secret=1", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty }', 'path must not contain query or fragment'],
   'optional-route' => ['@ProtobufAPIDefinition(method: .get, path: "/{id}", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; let id: String? }', 'cannot reference an Optional stored property'],
   'optional-route-alias' => ['typealias ID = String?\n@ProtobufAPIDefinition(method: .get, path: "/{id}", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty; let id: ID }'.gsub('\\n', "\n"), 'path placeholder values cannot be Optional'],
+  'empty-status-range' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous, response: .empty(statusCodes: [404])) struct Bad { typealias APIResponse = EmptyResponse }', 'unique successful HTTP integer codes'],
+  'empty-status-duplicate' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous, response: .empty(statusCodes: [200, 200])) struct Bad { typealias APIResponse = EmptyResponse }', 'unique successful HTTP integer codes'],
+  'empty-status-dynamic' => ['let statuses: Set<Int> = [200]\n@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous, response: .empty(statusCodes: statuses)) struct Bad { typealias APIResponse = EmptyResponse }'.gsub('\\n', "\n"), 'literal statusCodes array'],
   'duplicate-macro' => ['@ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) @ProtobufAPIDefinition(method: .get, path: "/", auth: .anonymous) struct Bad { typealias APIResponse = Google_Protobuf_Empty }', 'must not be applied more than once'],
 }
 compiler = ['xcrun', 'swiftc', '-typecheck', '-swift-version', '6', '-target', "#{arch}-apple-macos14.0", '-sdk', sdk,

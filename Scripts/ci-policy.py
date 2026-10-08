@@ -8,7 +8,7 @@ import re
 import subprocess
 import sys
 
-JOBS = ('policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke', 'apple-platform-builds', 'static-contracts')
+JOBS = ('policy', 'build-and-test', 'docs-contract-sync', 'consumer-smoke', 'apple-platform-builds', 'static-contracts', 'paired-candidate')
 DOC_JOBS = ('docs-contract-sync', 'static-contracts')
 NON_PR_SKIP = set()
 SHA = re.compile(r"[0-9a-f]{40}")

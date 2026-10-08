@@ -2,6 +2,14 @@
 
 ## Unreleased — 6.0 binary contract redesign
 
+- Breaking candidate refinement: separate encoding/decoding options and MIME policy;
+  use ProtobufCodecOptions, directional encoded-byte limit names and payload-free
+  ProtobufDecodingFailure categories.
+- Replace protobufNoContent/.noContent macro mode with protobufEmptyResponse and
+  .empty(statusCodes:), preserving strict empty-body semantics and explicit success codes.
+- Run shared public/paired/release validation; gate real macro-off sockets, compiler
+  controls, both Xcodes, cold/warm loopback, and release-only TSAN.
+
 - Add a standalone macro-first iOS validation app and macOS CLI sharing seven
   real-transport/cache scenarios, with cold-launch and process-relaunch evidence.
 - Breaking: replace adapter endpoint/client SPI with core 6.1 EncodedRequest factories.

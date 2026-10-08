@@ -75,3 +75,47 @@ but not compiled. No claim of a passing new runtime or remote CI result is made.
 
 Historical results from PR #2 are evidence for that old source/Core pair only:
 https://github.com/InnoSquadCorp/InnoNetwork-Protobuf/actions/runs/37012891595
+
+## Breaking refinement, local implementation (2026-10-08)
+
+The later user-approved refinement replaces the combined `ProtobufCodingOptions`
+with `ProtobufCodecOptions(encoding:decoding:)`, directional options and independent
+request/response media policy. Request bytes, response serialized bytes and nesting
+limits are named separately; none promises a peak-memory or CPU cap. Protobuf decode
+failures now have payload-free categories. Core remains the transport/auth/retry/
+cache/cancellation owner, pinned exactly to 6.1.1; no Core source was modified.
+
+HTTP empty responses use `protobufEmptyResponse` and macro `.empty(statusCodes:)`.
+The default remains 204/205; other successful status codes require explicit opt-in.
+Invalid/duplicate/nonliteral macro status policies and protobuf Empty versus HTTP
+EmptyResponse confusion have targeted diagnostics. Decoder options are not applied
+to HTTP empty responses.
+
+The macro-off executable now runs a real URLSession loopback echo, schema-empty,
+explicit HTTP-empty and invalid-media path via `any EncodedRequestClient`.
+Its sample-only socket fixture matches ValidationApp byte-for-byte. The manual
+existential unit test is no longer conditional on the Macros trait.
+
+`Scripts/validate_candidate.sh` is the shared execution contract. Public and paired
+CI use it, and paired validation is part of CI Required. Both Xcodes validate the
+exact release tag through the same script in release mode, which adds isolated
+TSAN. Public lockfiles must match both version 6.1.1 and the reviewed tag commit.
+Loopback cold/warm JSON reports are uploaded from each matrix job. Existing metadata
+queue logic, impact selection, tag-object identity, annotated tag, main ancestry,
+Ready notes and explicit publication approval gates remain.
+
+Executed VM evidence for this refinement:
+- Python automation: 36 tests passed, including fake-tool shell orchestration and
+  failure-stop fixtures. Fake tools are NOT evidence of Swift compilation/runtime.
+- Static contracts: 23 Core fixtures, 34 dependency-integrity fixtures, 8 public
+  Core pin fixtures, 12 workflow fixtures, release/Git/docs checks passed.
+- actionlint 1.7.12 passed with only the existing exact queue compatibility exception.
+- Shell/Ruby syntax and Git whitespace checks passed.
+
+Still NOT executed: Swift build/tests, macro expansion/compiler controls, actual
+consumer/socket execution, TSAN or Apple platform builds against this new source.
+The new Swift regression suite covers directional MIME, response caps, empty status
+policy and detailed malformed/depth/required-field errors but remains uncompiled
+in this VM. The paired graph fix still needs real SwiftPM/Xcode evidence. New
+Package.resolved files were not fabricated. This is a locally prepared candidate,
+not a verified releasable build.

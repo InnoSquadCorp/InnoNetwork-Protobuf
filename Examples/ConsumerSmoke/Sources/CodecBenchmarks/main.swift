@@ -35,7 +35,7 @@ func measure<Message: SwiftProtobuf.Message & Sendable>(
             session: session)
         let request = try EncodedRequest<Message>.protobuf(
             method: .post, path: "/measure", auth: .anonymous, body: message,
-            codec: .init(maximumRequestBytes: 16 * 1024 * 1024, deterministic: deterministic),
+            codec: .init(encoding: .init(maximumEncodedRequestBytes: 16 * 1024 * 1024, deterministic: deterministic)),
             options: .init(codecObserver: { sample in observed.withLock { $0.append(sample) } }))
         let result = try await client.request(request)
         precondition(result.isEqualTo(message: message))

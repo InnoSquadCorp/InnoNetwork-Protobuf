@@ -46,9 +46,19 @@ jobs:
 
   validate-release:
     needs: resolve-release
-    name: Validate Release
-    runs-on: macos-15
-    timeout-minutes: 60
+    name: Validate Release — Xcode ${{ matrix.xcode.label }}
+    runs-on: ${{ matrix.xcode.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        xcode:
+          - label: "26.0.1"
+            runner: macos-15
+            path: /Applications/Xcode_26.0.1.app
+          - label: "27.0"
+            runner: xcode-27
+            path: /Applications/Xcode.app
     permissions:
       contents: read
 
@@ -77,7 +87,7 @@ jobs:
         run: python3 -B .ci-release-policy/Scripts/release-ref.py --tag "$RELEASE_TAG" --expected-sha "$RELEASE_SHA" --expected-tag-object "$RELEASE_TAG_OBJECT" --require-head
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
+        run: sudo xcode-select -s ${{ matrix.xcode.path }}
       - name: Validate candidate and publication intent
         id: candidate
         env:
@@ -97,19 +107,24 @@ jobs:
         run: |
           bash Scripts/check_docs_contract_sync.sh
           ruby Scripts/test_release_gate.rb
-      - name: Tests and executable examples
-        run: |
-          xcrun swift test
-          xcrun swift run InnoNetworkProtobufDocSmoke
-          xcrun swift run --package-path Examples/ConsumerSmoke ConsumerSmoke
-          xcrun swift run --package-path Examples/ConsumerSmoke LegacyConsumerSmoke
-          ruby Scripts/check_dependency_integrity.rb Examples/ConsumerSmoke/.build Examples/ConsumerSmoke/Package.resolved
+      - name: Validate complete public release candidate
+        run: env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh release
       - name: Five-platform verification (macOS above)
+        if: matrix.xcode.label == '26.0.1'
         run: |
           bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator
           bash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0
           bash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0
           bash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0
+
+      - name: Preserve synthetic validation reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-${{ matrix.xcode.label }}
+          path: |
+            ${{ runner.temp }}/protobuf-validation.*/cold.json
+            ${{ runner.temp }}/protobuf-validation.*/warm.json
 
   publish-release:
     name: Publish Release

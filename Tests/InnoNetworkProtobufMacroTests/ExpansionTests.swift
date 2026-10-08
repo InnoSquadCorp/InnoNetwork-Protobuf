@@ -33,7 +33,7 @@ struct ExpansionTests {
                         let options = InnoNetwork.EncodedRequestOptions()
                         return try InnoNetwork.EncodedRequest<APIResponse>.protobuf(
                             method: self.method, path: self.path, auth: self.sessionAuthentication,
-                            codec: InnoNetworkProtobuf.ProtobufCodingOptions(), options: options)
+                            codec: InnoNetworkProtobuf.ProtobufCodecOptions(), options: options)
                     }
                 }
                 """,

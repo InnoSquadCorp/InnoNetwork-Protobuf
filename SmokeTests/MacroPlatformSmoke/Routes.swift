@@ -10,7 +10,7 @@ public enum Routes {
         public let id: String
         public let body: Google_Protobuf_Empty?
     }
-    @ProtobufAPIDefinition(method: .delete, path: "/users/{id}", auth: .required, response: .noContent)
+    @ProtobufAPIDefinition(method: .delete, path: "/users/{id}", auth: .required, response: .empty())
     public struct Delete {
         public typealias APIResponse = EmptyResponse
         public let id: Int

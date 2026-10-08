@@ -6,11 +6,14 @@ No GeneratedClientSupport SPI is imported by this package.
 ## Stable
 
 - `ProtobufMediaType`
-- `ProtobufCodingOptions`
+- `ProtobufEncodingOptions`
+- `ProtobufDecodingOptions`
+- `ProtobufCodecOptions`
+- `ProtobufDecodingFailure`
 - `EncodedRequest.protobuf(method:path:auth:body:codec:options:)`
 - `EncodedRequest.protobuf(method:path:auth:codec:options:)`
-- `EncodedRequest.protobufNoContent(method:path:auth:body:codec:options:)`
-- `EncodedRequest.protobufNoContent(method:path:auth:codec:options:)`
+- `EncodedRequest.protobufEmptyResponse(method:path:auth:body:encoding:statusCodes:options:)`
+- `EncodedRequest.protobufEmptyResponse(method:path:auth:encoding:statusCodes:options:)`
 - `EncodedRequestBody.protobuf(_:options:)`
 - `AnyResponseDecoder.protobuf(options:)`
 

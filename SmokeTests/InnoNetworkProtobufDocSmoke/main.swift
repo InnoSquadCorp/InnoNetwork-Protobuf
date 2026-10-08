@@ -8,8 +8,8 @@ import SwiftProtobuf
 struct Echo {
     typealias APIResponse = Google_Protobuf_StringValue
     let body: Google_Protobuf_StringValue
-    var protobufOptions: ProtobufCodingOptions {
-        .init(maximumRequestBytes: 8_192, maximumResponseBytes: 8_192)
+    var protobufOptions: ProtobufCodecOptions {
+        .init(encoding: .init(maximumEncodedRequestBytes: 8_192), decoding: .init(maximumEncodedResponseBytes: 8_192))
     }
 }
 #endif
@@ -20,7 +20,7 @@ let request = try Echo(body: message).makeEncodedRequest()
 #else
 let request = try EncodedRequest<Google_Protobuf_StringValue>.protobuf(
     method: .post, path: "/echo", auth: .anonymous, body: message,
-    codec: .init(maximumRequestBytes: 8_192, maximumResponseBytes: 8_192))
+    codec: .init(encoding: .init(maximumEncodedRequestBytes: 8_192), decoding: .init(maximumEncodedResponseBytes: 8_192)))
 #endif
 let response = Response(
     statusCode: 200, data: try message.serializedData(), request: nil,

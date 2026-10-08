@@ -3,7 +3,7 @@ import InnoNetwork
 /// Explicit response contract; a protobuf Empty message is not HTTP no-content.
 public enum ProtobufResponseMode: Sendable {
     case message
-    case noContent
+    case empty(statusCodes: Set<Int> = [204, 205])
 }
 
 #if Macros
@@ -11,7 +11,7 @@ public enum ProtobufResponseMode: Sendable {
 /// Declare APIResponse explicitly and store body/query/path inputs on the struct.
 /// Optional body nil means no body. Query is ordinary URLQueryEncoder input.
 /// Optional policy properties: protobufOptions, requestOptions and queryEncoder.
-/// HTTP no-content requires response: .noContent and APIResponse = EmptyResponse.
+/// HTTP no-content requires response: .empty() and APIResponse = EmptyResponse.
 @attached(
     extension, conformances: EncodedAPIDefinition,
     names: named(method), named(path), named(sessionAuthentication), named(makeEncodedRequest))

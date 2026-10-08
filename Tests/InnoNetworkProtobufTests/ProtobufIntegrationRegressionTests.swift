@@ -16,8 +16,7 @@ private struct ErasedClientEndpoint {
 
 @Suite("Integrated public adapter regressions")
 struct ProtobufIntegrationRegressionTests {
-    #if Macros
-    @Test func protocolErasedClientExecutesManualAndMacroRequests() async throws {
+    @Test func protocolErasedClientExecutesManualRequests() async throws {
         var message = Google_Protobuf_StringValue()
         message.value = "existential consumer"
         let data = try message.serializedData()
@@ -31,12 +30,24 @@ struct ProtobufIntegrationRegressionTests {
         let manual = try EncodedRequest<Google_Protobuf_StringValue>.protobuf(
             method: .post, path: "/manual", auth: .anonymous, body: message)
         #expect(try await client.request(manual) == message)
-        #expect(try await client.request(ErasedClientEndpoint(body: message)) == message)
+        #expect(try await client.request(manual) == message)
         #expect(session.capturedRequestsInOrder.map(\.httpBody) == [data, data])
         #expect(session.capturedRequestsInOrder.map(\.httpMethod) == ["POST", "POST"])
         await concrete.shutdown()
     }
 
+    #if Macros
+    @Test func protocolErasedClientExecutesMacroRequest() async throws {
+        var message = Google_Protobuf_StringValue()
+        message.value = "macro existential"
+        let session = MockURLSession()
+        session.setScriptedResponses([.http(statusCode: 200, data: try message.serializedData(),
+                                           headers: ["Content-Type": "application/protobuf"])])
+        let concrete = DefaultNetworkClient(configuration: .safeDefaults(baseURL: URL(string: "https://example.com")!), session: session)
+        let erased: any EncodedRequestClient = concrete
+        #expect(try await erased.request(ErasedClientEndpoint(body: message)) == message)
+        await concrete.shutdown()
+    }
     #endif
 
     @Test(arguments: [
@@ -65,7 +76,7 @@ struct ProtobufIntegrationRegressionTests {
             #expect(throws: NetworkError.self) {
                 try EncodedRequest<Google_Protobuf_Empty>.protobuf(
                     method: .post, path: "/headers", auth: .anonymous, body: Google_Protobuf_Empty(),
-                    codec: .init(acceptsLegacyMediaType: true, allowsMissingContentType: true),
+                    codec: .init(decoding: .init(allowsMissingContentType: true)),
                     options: .init(headers: HTTPHeaders([name: value])))
             }
         }

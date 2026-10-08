@@ -18,21 +18,21 @@ private struct AnonymousCompatibilityEndpoint {
     typealias APIResponse = TestUserResponse
     let body: TestUserRequest
     let requestOptions: EncodedRequestOptions
-    var protobufOptions: ProtobufCodingOptions { .init(allowsMissingContentType: true) }
+    var protobufOptions: ProtobufCodecOptions { .init(decoding: .init(allowsMissingContentType: true)) }
 }
 @ProtobufAPIDefinition(method: .post, path: "/protobuf", auth: .required)
 private struct RequiredCompatibilityEndpoint {
     typealias APIResponse = TestUserResponse
     let body: TestUserRequest
     let requestOptions: EncodedRequestOptions
-    var protobufOptions: ProtobufCodingOptions { .init(allowsMissingContentType: true) }
+    var protobufOptions: ProtobufCodecOptions { .init(decoding: .init(allowsMissingContentType: true)) }
 }
 @ProtobufAPIDefinition(method: .post, path: "/protobuf", auth: .optional)
 private struct OptionalCompatibilityEndpoint {
     typealias APIResponse = TestUserResponse
     let body: TestUserRequest
     let requestOptions: EncodedRequestOptions
-    var protobufOptions: ProtobufCodingOptions { .init(allowsMissingContentType: true) }
+    var protobufOptions: ProtobufCodecOptions { .init(decoding: .init(allowsMissingContentType: true)) }
 }
 #endif
 
@@ -71,7 +71,7 @@ private func CompatibilityRequest(
     }
     return try .protobuf(
         method: .post, path: "/protobuf", auth: sessionAuthentication,
-        body: TestUserRequest(userID: 42), codec: .init(allowsMissingContentType: true),
+        body: TestUserRequest(userID: 42), codec: .init(decoding: .init(allowsMissingContentType: true)),
         options: .init(headers: headers))
 }
 

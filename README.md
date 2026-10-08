@@ -77,8 +77,8 @@ import SwiftProtobuf
 struct Echo {
     typealias APIResponse = Google_Protobuf_StringValue
     let body: Google_Protobuf_StringValue
-    var protobufOptions: ProtobufCodingOptions {
-        .init(maximumRequestBytes: 8_192, maximumResponseBytes: 8_192)
+    var protobufOptions: ProtobufCodecOptions {
+        .init(encoding: .init(maximumEncodedRequestBytes: 8_192), decoding: .init(maximumEncodedResponseBytes: 8_192))
     }
 }
 
@@ -104,7 +104,7 @@ duplicates and order. An optional `queryEncoder` selects array handling.
 policy properties. A missing body differs from a default message whose
 valid encoding happens to contain zero bytes. GET/HEAD/TRACE bodies are rejected.
 Optional-message bodies preserve nil versus present-empty, including aliases.
-Use `response: .noContent` with `APIResponse = EmptyResponse` for HTTP 204/205;
+Use `response: .empty()` with `APIResponse = EmptyResponse` for HTTP 204/205;
 use `Google_Protobuf_Empty` for a protobuf message, including unknown fields.
 
 Macros accept structs, public/private/nested and generic Message bodies.
@@ -119,7 +119,7 @@ The same endpoint can be built without a macro:
 ```swift
 let manual = try EncodedRequest<Google_Protobuf_StringValue>.protobuf(
     method: .post, path: "/echo", auth: .anonymous, body: body,
-    codec: .init(maximumRequestBytes: 8_192, maximumResponseBytes: 8_192))
+    codec: .init(encoding: .init(maximumEncodedRequestBytes: 8_192), decoding: .init(maximumEncodedResponseBytes: 8_192)))
 ```
 
 Set `traits: []` on both package dependencies for a compiler-free graph; another
@@ -130,25 +130,28 @@ endpoints can conform to core `EncodedAPIDefinition`. Do not implement the remov
 
 ## Media, decoding and no-content
 
-- Default Content-Type/Accept is `application/protobuf` (RFC 9996).
-- `ProtobufCodingOptions(mediaType: .legacy)` explicitly sends `application/x-protobuf`.
-  `acceptsLegacyMediaType` and `allowsMissingContentType` are separate response opt-ins.
-- Strict decoding accepts only the selected binary profile and supported
-  `encoding=binary` parameter. The reserved `version` parameter, duplicate and
-  unsupported parameters are rejected; no wire version is currently defined.
-  See the [official media-type contract](https://protobuf.dev/reference/protobuf/mime-types/).
-  No JSON/gRPC detection, no automatic POST re-send after 415.
+- Request `ProtobufEncodingOptions.mediaType` and response
+  `ProtobufDecodingOptions.acceptedMediaTypes` are independent. A legacy request can
+  receive a standard response. Accept advertises the complete response set.
+- Example: `ProtobufCodecOptions(encoding: .init(mediaType: .legacy), decoding: .init(acceptedMediaTypes: [.standard, .legacy]))`.
+- `allowsMissingContentType` is a response-only opt-in. Request Content-Type remains
+  checked against the encoding profile. Conflicting/duplicate headers are rejected.
+- The parser deliberately implements a strict binary subset: only `encoding=binary`
+  is supported. Other MIME/schema parameters, duplicate parameters, JSON and gRPC
+  are rejected. This is narrower than the [full MIME contract](https://protobuf.dev/reference/protobuf/mime-types/).
+  There is no automatic resend after 415 or implicit format detection.
 - Depth defaults to 100; unknown fields are preserved. Deterministic ordering is
   opt-in, not a canonical cross-language signature representation.
 - Schema Empty uses `Google_Protobuf_Empty`, including unknown-field equality.
-  HTTP no-content uses `EncodedRequest<EmptyResponse>` and `.noContent()` (204/205
-  with no observed body), never an implicit successful decode of malformed bytes.
+  HTTP empty responses use `EncodedRequest<EmptyResponse>.protobufEmptyResponse`
+  and `response: .empty(statusCodes: [200, 204])`; default `.empty()` allows 204/205
+  with no observed body, never an implicit successful decode of malformed bytes.
 - Proto2 required fields remain required. A valid proto3 zero-byte message is decoded normally.
 
 ## Limits and errors
 
-`maximumRequestBytes` is checked **after encoding, before sending**; it does not
-cap temporary allocations. Response limits tighten core's collection cap and
+`maximumEncodedRequestBytes` is checked **after encoding, before sending**; it does not
+cap temporary allocations. `ProtobufDecodingOptions.maximumEncodedResponseBytes` tightens core's collection cap and
 are rechecked before decoding. Default codec byte limits inherit core/app policy;
 there is no invented application payload size. Synchronous codec work is not
 forcibly preempted by cancellation; core checkpoints suppress late success.
@@ -156,7 +159,9 @@ forcibly preempted by cancellation; core checkpoints suppress late success.
 Execution throws `NetworkError`. Encoding/invalid-limit/request-budget failures
 use `.configuration(reason: .invalidPayload(...))`, not retryable transport errors.
 Decode/media failures use `.decoding(stage: .responseBody, ...)`, with payload-free
-`EncodedPayloadFailure` domain/codes. Core HTTP/network/auth errors retain their
+`ProtobufDecodingFailure` domain/codes distinguishing malformed/truncated data,
+invalid UTF-8, missing required fields, nesting limits, extension decoding failures and media.
+Limit/configuration failures retain core `EncodedPayloadFailure` codes. Core HTTP/network/auth errors retain their
 existing meaning. Failure bodies follow core `captureFailurePayload` policy.
 `EncodedRequestOptions.codecObserver` reports stage, byte count, monotonic duration
 and success only, without a body or token. The callback is synchronous and must
@@ -205,3 +210,19 @@ Swift 6.2+; this is HTTP protobuf, not gRPC or a schema/code-generation service.
 ## Sponsorship
 
 Support InnoNetwork-Protobuf development through [GitHub Sponsors](https://github.com/sponsors/InnoSquadCorp) or [Patreon](https://www.patreon.com/15188938/join).
+
+### Directional policy and empty response migration
+
+The old combined `ProtobufCodingOptions` is removed. Use `ProtobufCodecOptions`
+with separate `encoding` and `decoding` values. Standalone body/decoder factories
+accept only their own directional options. HTTP empty responses accept encoding
+options and explicit successful status codes, so unused decoding limits cannot
+invalidate them. Raw `EncodedRequestOptions.maximumResponseBytes` remains a Core
+collection limit; factory policies can only tighten it.
+
+`Scripts/validate_candidate.sh standard` is shared by both public and pinned-pair CI.
+It executes serial/parallel tests, compiler controls, external consumers (including
+real macro-off sockets), and cold/warm loopback checks. Release validation runs the
+same script with `release`, including an isolated TSAN build, on both supported
+Xcodes. CI Required includes the pinned pair. Release publishing still requires
+immutable tag identity, main ancestry, annotated tag and committed Ready notes.

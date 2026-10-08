@@ -9,7 +9,7 @@ Do not modify existing Core tags.
 | ProtobufAPIDefinition protocol / parameters | @ProtobufAPIDefinition macro / body (manual EncodedRequest.protobuf fallback) |
 | ProtobufNetworkClient / protobufRequest | EncodedRequestClient / request |
 | ProtobufEmptyResponse (schema Empty) | Google_Protobuf_Empty |
-| Implicit empty HTTP response | response: .noContent and APIResponse = EmptyResponse (manual protobufNoContent fallback) |
+| Implicit empty HTTP response | response: .empty() and APIResponse = EmptyResponse (manual protobufEmptyResponse fallback) |
 | protobufEmptyCapable | Strict message decoder or explicit HTTP no-content, not both |
 | Implicit application/x-protobuf | application/protobuf default; explicit .legacy profile |
 | Custom endpoint witnesses | EncodedRequestOptions, shared core types |
@@ -42,3 +42,16 @@ not arbitrary replacement bodies created by an interceptor.
 The repository/product is InnoNetwork-Protobuf; import remains InnoNetworkProtobuf.
 The old product alias is kept, but removed runtime protocols are not emulated.
 For rollback restore the prior compatible core/adapter lockfile pair, never retag.
+
+## Refined candidate policy
+
+`ProtobufCodingOptions` becomes `ProtobufCodecOptions(encoding:decoding:)`.
+Request encoding owns `maximumEncodedRequestBytes`, deterministic ordering and
+Content-Type. Response decoding owns `maximumEncodedResponseBytes`, `maximumDepth`,
+unknown fields and `acceptedMediaTypes`. A raw response decoder receives only
+`ProtobufDecodingOptions`, and a raw body encoder receives only encoding options.
+`protobufEmptyResponse` takes encoding plus `statusCodes`; `.empty()` in a macro
+uses 204/205, while `.empty(statusCodes: [200, 204])` opts into empty 200 explicitly.
+Decoder classification now uses `ProtobufDecodingFailure`; transport/auth/retry and
+resource-limit errors keep their Core categories. No payload or raw upstream error
+message is added to the category.

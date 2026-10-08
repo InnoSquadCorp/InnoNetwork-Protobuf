@@ -13,7 +13,7 @@ private struct ConfiguredEndpoint {
     let id: Int
     let body: Google_Protobuf_StringValue
     let requestOptions: EncodedRequestOptions
-    let protobufOptions: ProtobufCodingOptions
+    let protobufOptions: ProtobufCodecOptions
 }
 
 @ProtobufAPIDefinition(method: .get, path: "/identity", auth: .required)
@@ -82,7 +82,7 @@ struct ProtobufMacroParityTests {
                 baseURL: URL(string: "https://example.com")!, resilience: .init(bodyBuffering: .streaming(maxBytes: 4))),
             session: session)
         let endpoint = ConfiguredEndpoint(
-            id: 1, body: .init(), requestOptions: .init(), protobufOptions: .init(maximumResponseBytes: limit))
+            id: 1, body: .init(), requestOptions: .init(), protobufOptions: .init(decoding: .init(maximumEncodedResponseBytes: limit)))
         await #expect(throws: NetworkError.self) { try await execute(client, macro: macro, endpoint: endpoint) }
     }
 
@@ -139,7 +139,7 @@ struct ProtobufMacroParityTests {
         var body = Google_Protobuf_StringValue()
         body.value = "bounded"
         let endpoint = ConfiguredEndpoint(
-            id: 1, body: body, requestOptions: .init(), protobufOptions: .init(maximumRequestBytes: limit))
+            id: 1, body: body, requestOptions: .init(), protobufOptions: .init(encoding: .init(maximumEncodedRequestBytes: limit)))
         let session = MockURLSession()
         session.setScriptedResponses([.http(statusCode: 200, headers: ["Content-Type": "application/protobuf"])])
         let client = DefaultNetworkClient(

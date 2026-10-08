@@ -10,11 +10,14 @@ for section in Stable 'Provisionally Stable' Internal/Operational; do
 done
 expected_stable=(
   'ProtobufMediaType'
-  'ProtobufCodingOptions'
+  'ProtobufEncodingOptions'
+  'ProtobufDecodingOptions'
+  'ProtobufCodecOptions'
+  'ProtobufDecodingFailure'
   'EncodedRequest.protobuf(method:path:auth:body:codec:options:)'
   'EncodedRequest.protobuf(method:path:auth:codec:options:)'
-  'EncodedRequest.protobufNoContent(method:path:auth:body:codec:options:)'
-  'EncodedRequest.protobufNoContent(method:path:auth:codec:options:)'
+  'EncodedRequest.protobufEmptyResponse(method:path:auth:body:encoding:statusCodes:options:)'
+  'EncodedRequest.protobufEmptyResponse(method:path:auth:encoding:statusCodes:options:)'
   'EncodedRequestBody.protobuf(_:options:)'
   'AnyResponseDecoder.protobuf(options:)'
 )
@@ -43,8 +46,8 @@ grep -Fq 'Historical evidence for the superseded SPI adapter' docs/COMPATIBILITY
 if grep -ERn '@_spi|protocol ProtobufAPIDefinition|ProtobufNetworkClient|ProtobufEmptyResponse|HTTPEmptyResponseMessage|protobufEmptyCapable' Sources SmokeTests Examples/ConsumerSmoke/Sources; then
   echo 'Removed runtime surface or SPI reintroduced' >&2; exit 1
 fi
-for symbol in ProtobufCodingOptions ProtobufMediaType; do
-  grep -Fq "public $(if [[ "$symbol" == ProtobufMediaType ]]; then echo enum; else echo struct; fi) $symbol" Sources/InnoNetworkProtobuf/ProtobufCodec.swift
+for symbol in ProtobufEncodingOptions ProtobufDecodingOptions ProtobufCodecOptions ProtobufDecodingFailure ProtobufMediaType; do
+  grep -Fq "public $(if [[ "$symbol" == ProtobufMediaType || "$symbol" == ProtobufDecodingFailure ]]; then echo enum; else echo struct; fi) $symbol" Sources/InnoNetworkProtobuf/ProtobufCodec.swift
   grep -Fq "\`$symbol\`" API_STABILITY.md
 done
 ruby -e '
@@ -54,3 +57,6 @@ ruby -e '
   abort "Cache recovery documentation differs from the executable consumer" unless examples.length == 1 && documented == examples
 '
 echo 'docs-contract-sync: OK'
+
+# Both macro-enabled and macro-disabled executable consumers use the same socket fixture.
+cmp Examples/ValidationApp/Sources/ValidationKit/LoopbackFixture.swift Examples/ManualConsumerSmoke/Sources/ManualConsumerSmoke/LoopbackFixture.swift

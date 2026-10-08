@@ -93,14 +93,14 @@ struct TestUserResponse: SwiftProtobuf.Message, Sendable {
 func GetUserProtobuf(userID: Int32) throws(NetworkError) -> EncodedRequest<TestUserResponse> {
     try .protobuf(
         method: .post, path: "/user/protobuf", auth: .anonymous,
-        body: TestUserRequest(userID: userID), codec: .init(allowsMissingContentType: true))
+        body: TestUserRequest(userID: userID), codec: .init(decoding: .init(allowsMissingContentType: true)))
 }
 
 // GET request API definition
 func GetUserProtobufGET(userID: Int32) throws(NetworkError) -> EncodedRequest<TestUserResponse> {
     try .protobuf(
         method: .get, path: "/user/\(userID)", auth: .anonymous,
-        codec: .init(allowsMissingContentType: true))
+        codec: .init(decoding: .init(allowsMissingContentType: true)))
 }
 
 // Empty response API definition
@@ -130,7 +130,7 @@ func GetUserProtobufWithInterceptors(userID: Int32) throws(NetworkError) -> Enco
 > {
     try .protobuf(
         method: .post, path: "/user/protobuf", auth: .anonymous,
-        body: TestUserRequest(userID: userID), codec: .init(allowsMissingContentType: true),
+        body: TestUserRequest(userID: userID), codec: .init(decoding: .init(allowsMissingContentType: true)),
         options: .init(
             requestInterceptors: [TestProtobufRequestInterceptor()],
             responseInterceptors: [TestProtobufResponseInterceptor()]))

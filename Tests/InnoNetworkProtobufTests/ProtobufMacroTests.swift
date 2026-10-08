@@ -23,14 +23,21 @@ private struct MacroOptional {
     typealias APIResponse = Google_Protobuf_Empty
     let body: OptionalMessage
 }
-@ProtobufAPIDefinition(method: .delete, path: "/empty", auth: .anonymous, response: .noContent)
+@ProtobufAPIDefinition(method: .delete, path: "/empty", auth: .anonymous, response: .empty())
 private struct MacroDelete {
     typealias APIResponse = EmptyResponse
 }
-@ProtobufAPIDefinition(method: .put, path: "/empty", auth: .anonymous, response: .noContent)
+@ProtobufAPIDefinition(method: .put, path: "/empty", auth: .anonymous, response: .empty())
 private struct MacroPut {
     typealias APIResponse = EmptyResponse
     let body: Google_Protobuf_Empty
+}
+
+@ProtobufAPIDefinition(method: .get, path: "/empty", auth: .anonymous, response: .empty(statusCodes: [200, 204]))
+private struct MacroCustomEmpty {
+    typealias APIResponse = EmptyResponse
+    // Response decoding is irrelevant to an empty HTTP contract.
+    var protobufOptions: ProtobufCodecOptions { .init(decoding: .init(maximumDepth: 0)) }
 }
 
 @Suite("Macro-first protobuf execution")
@@ -60,6 +67,16 @@ struct ProtobufMacroTests {
         #expect(present.body != nil)
         #expect(absent.options.headers.values(for: "Content-Type").isEmpty)
         #expect(present.options.headers.values(for: "Content-Type") == ["application/protobuf"])
+    }
+
+    @Test func customEmptyStatusDoesNotUseProtobufDecodingPolicy() async throws {
+        let session = MockURLSession()
+        session.setMockResponse(statusCode: 200)
+        let client = DefaultNetworkClient(configuration: .safeDefaults(baseURL: URL(string: "https://example.com")!), session: session)
+        _ = try await client.request(MacroCustomEmpty())
+        session.setMockResponse(statusCode: 200, data: Data([1]))
+        await #expect(throws: NetworkError.self) { try await client.request(MacroCustomEmpty()) }
+        await client.shutdown()
     }
 
     @Test func noContentIsExplicitAndRejectsBody() async throws {

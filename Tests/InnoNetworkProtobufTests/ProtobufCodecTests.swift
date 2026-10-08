@@ -26,7 +26,7 @@ struct ProtobufCodecTests {
         for message in [first, second] {
             let request = try EncodedRequest<Google_Protobuf_Empty>.protobuf(
                 method: .post, path: "/map", auth: .anonymous,
-                body: message, codec: .init(deterministic: true))
+                body: message, codec: .init(encoding: .init(deterministic: true)))
             _ = try await client.request(request)
         }
         var encoding = BinaryEncodingOptions()
@@ -83,8 +83,8 @@ struct ProtobufCodecTests {
                 data: Data(), response: response(Data(), type: type))
             Issue.record("Expected media rejection")
         } catch NetworkError.decoding(_, let reason, _) {
-            #expect(reason.domain == EncodedPayloadFailure.errorDomain)
-            #expect(reason.code == EncodedPayloadFailure.mediaType.rawValue)
+            #expect(reason.domain == ProtobufDecodingFailure.errorDomain)
+            #expect(reason.code == ProtobufDecodingFailure.invalidMediaType.rawValue)
         }
     }
 
@@ -95,7 +95,7 @@ struct ProtobufCodecTests {
                 data: data, response: response(data, type: nil))
         }
         let tolerant = AnyResponseDecoder<Google_Protobuf_Empty>.protobuf(
-            options: .init(acceptsLegacyMediaType: true, allowsMissingContentType: true))
+            options: .init(acceptedMediaTypes: [.standard, .legacy], allowsMissingContentType: true))
         _ = try tolerant.decode(data: data, response: response(data, type: nil))
         _ = try tolerant.decode(data: data, response: response(data, type: "application/x-protobuf"))
     }
@@ -136,8 +136,14 @@ struct ProtobufCodecTests {
         }
         let data = try value.serializedData()
         let shallow = AnyResponseDecoder<Google_Protobuf_Value>.protobuf(
-            options: .init(maximumDecodingDepth: 5))
-        #expect(throws: NetworkError.self) { try shallow.decode(data: data, response: response(data)) }
+            options: .init(maximumDepth: 5))
+        do {
+            _ = try shallow.decode(data: data, response: response(data))
+            Issue.record("Depth limit ignored")
+        } catch NetworkError.decoding(_, let failure, _) {
+            #expect(failure.domain == ProtobufDecodingFailure.errorDomain)
+            #expect(failure.code == ProtobufDecodingFailure.nestingLimitExceeded.rawValue)
+        }
         #expect(
             try AnyResponseDecoder<Google_Protobuf_Value>.protobuf().decode(
                 data: data, response: response(data)) == value)
@@ -171,7 +177,7 @@ struct ProtobufCodecTests {
         value.value = "too large"
         let oversized = try EncodedRequest<Google_Protobuf_Empty>.protobuf(
             method: .post, path: "/echo", auth: .anonymous,
-            body: value, codec: .init(maximumRequestBytes: 1))
+            body: value, codec: .init(encoding: .init(maximumEncodedRequestBytes: 1)))
         await #expect(throws: NetworkError.self) { try await client.request(oversized) }
         #expect(session.capturedRequestsInOrder.isEmpty)
         try await withThrowingTaskGroup(of: Void.self) { group in

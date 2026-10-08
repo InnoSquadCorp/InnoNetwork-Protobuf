@@ -10,7 +10,7 @@ import Testing
 private struct CachedValueEndpoint {
     typealias APIResponse = Google_Protobuf_StringValue
     let requestOptions: EncodedRequestOptions
-    let protobufOptions: ProtobufCodingOptions
+    let protobufOptions: ProtobufCodecOptions
 }
 #endif
 
@@ -50,7 +50,7 @@ struct ProtobufCoreBoundaryTests {
         _ client: DefaultNetworkClient, style: BoundaryEndpointStyle,
         limit: Int64? = nil, options: EncodedRequestOptions = .init()
     ) async throws -> Google_Protobuf_StringValue {
-        let codec = ProtobufCodingOptions(maximumResponseBytes: limit)
+        let codec = ProtobufCodecOptions(decoding: .init(maximumEncodedResponseBytes: limit))
         switch style {
         #if Macros
         case .macro:
@@ -213,8 +213,8 @@ struct ProtobufCoreBoundaryTests {
             Issue.record("Malformed message accepted")
         } catch NetworkError.decoding(let stage, let error, let response) {
             #expect(stage == .responseBody)
-            #expect(error.domain == EncodedPayloadFailure.errorDomain)
-            #expect(error.code == EncodedPayloadFailure.decoding.rawValue)
+            #expect(error.domain == ProtobufDecodingFailure.errorDomain)
+            #expect(error.code == ProtobufDecodingFailure.truncatedMessage.rawValue)
             #expect(response.data.isEmpty)
         }
         #expect(try await execute(core, style: style) == message())

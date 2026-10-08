@@ -5,7 +5,7 @@
       "if": "fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test",
       "name": "Build and Test \u2014 Xcode ${{ matrix.xcode.label }}",
       "runs-on": "${{ matrix.xcode.runner }}",
-      "timeout-minutes": 45,
+      "timeout-minutes": 90,
       "strategy": {
         "fail-fast": false,
         "matrix": {
@@ -44,16 +44,20 @@
           "run": "xcrun swift package resolve\nruby Scripts/check_dependency_integrity.rb .build Package.resolved\n"
         },
         {
-          "name": "Build",
-          "run": "xcrun swift build"
+          "name": "Validate exact public candidate",
+          "env": {
+            "VALIDATION_MODE": "${{ fromJSON(needs.ci-plan.outputs.plan).lane == 'release-validation' && 'release' || 'standard' }}"
+          },
+          "run": "env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh \"$VALIDATION_MODE\""
         },
         {
-          "name": "Test",
-          "run": "xcrun swift test"
-        },
-        {
-          "name": "Compile macro contracts",
-          "run": "ruby Scripts/check_macro_compile_failures.rb"
+          "name": "Preserve synthetic validation reports",
+          "if": "always()",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "with": {
+            "name": "public-${{ matrix.xcode.label }}",
+            "path": "${{ runner.temp }}/protobuf-validation.*/cold.json\n${{ runner.temp }}/protobuf-validation.*/warm.json\n"
+          }
         }
       ]
     },
@@ -198,14 +202,109 @@
           "run": "bash Scripts/check_static_contracts.sh"
         }
       ]
+    },
+    "paired-candidate": {
+      "needs": "ci-plan",
+      "if": "fromJSON(needs.ci-plan.outputs.plan).jobs.paired-candidate",
+      "name": "Paired candidate \u2014 Xcode ${{ matrix.xcode.label }}",
+      "runs-on": "${{ matrix.xcode.runner }}",
+      "timeout-minutes": 60,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "xcode": [
+            {
+              "label": "26.0.1",
+              "runner": "macos-15",
+              "path": "/Applications/Xcode_26.0.1.app"
+            },
+            {
+              "label": "27.0",
+              "runner": "xcode-27",
+              "path": "/Applications/Xcode.app"
+            }
+          ]
+        }
+      },
+      "env": {
+        "INNONETWORK_LOCAL_PATH": "${{ github.workspace }}/.build/paired-core"
+      },
+      "steps": [
+        {
+          "name": "Checkout adapter candidate",
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "ref": "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}",
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Validate immutable paired core revision",
+          "id": "core",
+          "shell": "bash",
+          "run": "set -euo pipefail\nruby Scripts/test_core_candidate.rb\nsha=$(ruby Scripts/check_core_candidate.rb)\necho \"sha=$sha\" >> \"$GITHUB_OUTPUT\"\n"
+        },
+        {
+          "name": "Checkout exact core candidate",
+          "uses": "actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+          "with": {
+            "repository": "InnoSquadCorp/InnoNetwork",
+            "ref": "${{ steps.core.outputs.sha }}",
+            "path": ".build/paired-core",
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Verify pair and toolchain",
+          "env": {
+            "EXPECTED_CORE": "${{ steps.core.outputs.sha }}"
+          },
+          "run": "ruby Scripts/check_core_candidate.rb \"$INNONETWORK_LOCAL_PATH\"\nsudo xcode-select -s '${{ matrix.xcode.path }}'\nxcodebuild -version\nxcrun swift --version\nprintf 'Core: %s\\nAdapter: %s\\n' \"$EXPECTED_CORE\" \"$(git rev-parse HEAD)\"\n"
+        },
+        {
+          "name": "Validate immutable pair through the shared contract",
+          "run": "bash Scripts/validate_candidate.sh standard"
+        },
+        {
+          "name": "Platform macro builds on the compatibility toolchain",
+          "if": "matrix.xcode.label == '26.0.1'",
+          "run": "bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator\nbash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0\nbash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0\nbash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0\n"
+        },
+        {
+          "name": "Preserve synthetic validation reports",
+          "if": "always()",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "with": {
+            "name": "paired-${{ matrix.xcode.label }}",
+            "path": "${{ runner.temp }}/protobuf-validation.*/cold.json\n${{ runner.temp }}/protobuf-validation.*/warm.json\n"
+          }
+        }
+      ]
     }
   },
   "release": {
     "validate-release": {
       "needs": "resolve-release",
-      "name": "Validate Release",
-      "runs-on": "macos-15",
-      "timeout-minutes": 60,
+      "name": "Validate Release \u2014 Xcode ${{ matrix.xcode.label }}",
+      "runs-on": "${{ matrix.xcode.runner }}",
+      "timeout-minutes": 120,
+      "strategy": {
+        "fail-fast": false,
+        "matrix": {
+          "xcode": [
+            {
+              "label": "26.0.1",
+              "runner": "macos-15",
+              "path": "/Applications/Xcode_26.0.1.app"
+            },
+            {
+              "label": "27.0",
+              "runner": "xcode-27",
+              "path": "/Applications/Xcode.app"
+            }
+          ]
+        }
+      },
       "permissions": {
         "contents": "read"
       },
@@ -232,7 +331,7 @@
         },
         {
           "name": "Select Xcode",
-          "run": "sudo xcode-select -s /Applications/Xcode_26.0.1.app"
+          "run": "sudo xcode-select -s ${{ matrix.xcode.path }}"
         },
         {
           "name": "Validate candidate and publication intent",
@@ -252,15 +351,25 @@
           "run": "bash Scripts/check_docs_contract_sync.sh\nruby Scripts/test_release_gate.rb\n"
         },
         {
-          "name": "Tests and executable examples",
-          "run": "xcrun swift test\nxcrun swift run InnoNetworkProtobufDocSmoke\nxcrun swift run --package-path Examples/ConsumerSmoke ConsumerSmoke\nxcrun swift run --package-path Examples/ConsumerSmoke LegacyConsumerSmoke\nruby Scripts/check_dependency_integrity.rb Examples/ConsumerSmoke/.build Examples/ConsumerSmoke/Package.resolved\n"
+          "name": "Validate complete public release candidate",
+          "run": "env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh release"
         },
         {
           "name": "Five-platform verification (macOS above)",
+          "if": "matrix.xcode.label == '26.0.1'",
           "run": "bash Scripts/build_apple_platform_target.sh iOS iphonesimulator arm64-apple-ios16.0-simulator\nbash Scripts/build_apple_platform_target.sh tvOS appletvos arm64-apple-tvos16.0\nbash Scripts/build_apple_platform_target.sh watchOS watchos arm64_32-apple-watchos9.0\nbash Scripts/build_apple_platform_target.sh visionOS xros arm64-apple-xros1.0\n"
+        },
+        {
+          "name": "Preserve synthetic validation reports",
+          "if": "always()",
+          "uses": "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+          "with": {
+            "name": "release-${{ matrix.xcode.label }}",
+            "path": "${{ runner.temp }}/protobuf-validation.*/cold.json\n${{ runner.temp }}/protobuf-validation.*/warm.json\n"
+          }
         }
       ]
     }
   },
-  "_provenance": "Integrated contract: main ebf1770 + candidate d4336c3, preserving main identity/metadata guards and candidate matrix/platform/consumer gates. Updated locally on 2026-10-08."
+  "_provenance": "Breaking candidate contract: directional API, shared public/pair/release validation; Xcode26/27 release matrix and isolated TSAN, 2026-10-08. Independent orchestration and fail-closed tests cover this updated baseline."
 }

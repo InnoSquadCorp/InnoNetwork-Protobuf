@@ -9,6 +9,11 @@ swift run --package-path "$repo_root/Examples/ManualConsumerSmoke" \
   --scratch-path "$scratch_path" ManualConsumerSmoke
 ruby "$repo_root/Scripts/check_dependency_integrity.rb" "$scratch_path" \
   "$repo_root/Examples/ManualConsumerSmoke/Package.resolved"
+if [[ -n "${INNONETWORK_LOCAL_PATH:-}" ]]; then
+  ruby "$repo_root/Scripts/check_core_candidate.rb" "$INNONETWORK_LOCAL_PATH" "$scratch_path/workspace-state.json"
+else
+  ruby "$repo_root/Scripts/check_public_core.rb" "$repo_root/Examples/ManualConsumerSmoke/Package.resolved"
+fi
 if find "$scratch_path" \( -path "$scratch_path/checkouts" -o -path "$scratch_path/repositories" \
   -o -path "$scratch_path/prebuilts" \) -prune -o \( -name 'SwiftSyntax.swiftmodule' -o -name 'InnoNetworkMacroSupport.swiftmodule' \
   -o -name 'InnoNetworkMacros' -o -name 'InnoNetworkMacros-tool' \
