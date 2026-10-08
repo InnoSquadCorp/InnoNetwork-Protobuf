@@ -56,7 +56,7 @@ let package = Package(
         .default(enabledTraits: ["Macros"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", .upToNextMinor(from: "603.0.1")),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", .upToNextMinor(from: "604.0.0")),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.1"),
         innoNetworkDependency,
     ],

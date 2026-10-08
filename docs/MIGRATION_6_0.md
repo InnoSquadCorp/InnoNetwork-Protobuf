@@ -28,7 +28,7 @@ protobufOptions/requestOptions/queryEncoder; arbitrary stored properties are not
 silently ignored. Replace old `T: ProtobufAPIDefinition` constraints with core
 `EncodedAPIDefinition`, not a macro type constraint. Both Macros traits can be
 disabled for a manual consumer. The adapter's shared compiler support currently
-pins the core dependency to exactly 6.1.1 and SwiftSyntax to 603.0.x.
+pins the core dependency to exactly 6.1.1 and SwiftSyntax to 604.0.x.
 
 Client mocks can conform only to EncodedRequestClient. Operations accept these
 clients and share the same deadline/cancel/result gate as ordinary requests.

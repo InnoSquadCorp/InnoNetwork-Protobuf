@@ -199,7 +199,7 @@ For an isolated compiler check, set `PROTOBUF_VALIDATION_SCRATCH_PATH` to a fres
 build directory when invoking `Scripts/check_macro_compile_failures.rb`.
 
 This adapter enables its own `Macros` trait by default; core's JSON macro is
-independent. The mixed external consumer enables both. SwiftSyntax 603.0.x and
+independent. The mixed external consumer enables both. SwiftSyntax 604.0.x and
 the shared generator are compiler-host-only; macro trust follows the consuming
 toolchain's normal policy, without a global bypass. Platform CI compiles applied
 macro declarations, not merely the runtime library.

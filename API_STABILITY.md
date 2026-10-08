@@ -47,5 +47,5 @@ Both product names still export the `InnoNetworkProtobuf` module.
 The new macro shares the old protocol's spelling, but generates core
 `EncodedAPIDefinition` conformance and cannot be used as a protocol constraint.
 `Macros` is enabled by default; disabling it removes macro declarations but
-retains manual factories and runtime behavior. SwiftSyntax 603.0.x and
+retains manual factories and runtime behavior. SwiftSyntax 604.0.x and
 `InnoNetworkMacroSupport` are compiler-host dependencies, not app runtime APIs.
