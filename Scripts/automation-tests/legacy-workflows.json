@@ -111,7 +111,7 @@
           "env": {
             "PUBLIC_MATRIX_RESULT": "${{ needs.build-and-test.result }}"
           },
-          "run": "[[ \"$PUBLIC_MATRIX_RESULT\" == success ]]\necho 'Preferred, compatibility and macro-off consumers ran in each public Xcode matrix entry.'\n"
+          "run": "[[ \"$PUBLIC_MATRIX_RESULT\" == success ]] || {\n  echo 'The public Xcode matrix must succeed before confirming consumer coverage.' >&2\n  exit 1\n}\necho 'Preferred, compatibility and macro-off consumers ran in each public Xcode matrix entry.'\n"
         }
       ]
     },
