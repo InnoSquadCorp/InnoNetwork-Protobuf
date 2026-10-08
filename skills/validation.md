@@ -39,6 +39,26 @@ whitespace validation passed. The Python helper uses only the standard library;
 the authoring validator's YAML dependency was installed in an external temporary
 virtual environment, not bundled into the skill.
 
+## Validator command limits
+
+Each external command has a recorded timeout: 60 seconds for toolchain and Git
+checks, 600 seconds for resolution, 120 seconds for the dependency graph and
+1,800 seconds for the Swift test/build command. A timeout stops validation with
+exit status 1, preserves the command's partial log and records failed
+`evidence.json` with `timeout_seconds`, `timed_out: true` and no fabricated
+process exit code.
+
+Run the host-independent regression tests with:
+
+```bash
+python3 -B -m unittest discover -s Scripts/automation-tests -p test_skill_consumer.py -v
+```
+
+These tests simulate successful commands, nonzero exits and timeouts during
+toolchain checks, resolution, graph inspection, Git inspection and Swift tests.
+They verify that evidence is written and no later command runs after a timeout;
+they do not compile Swift or replace the macOS consumer evidence above.
+
 ## Source repository checks
 
 - `Scripts/check_static_contracts.sh`: passed, including documentation contracts

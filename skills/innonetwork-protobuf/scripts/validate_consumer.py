@@ -15,6 +15,7 @@ import tempfile
 
 
 def main():
+    """Validate the pinned consumer and persist evidence for success or failure."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--scratch-path", type=Path, help="External SwiftPM cache and logs, retained after the run")
     args = parser.parse_args()
@@ -29,25 +30,36 @@ def main():
     evidence = {"status": "running", "started_at": datetime.now(timezone.utc).isoformat(), "commands": []}
 
     def check(condition, message):
+        """Stop validation when a required contract does not hold."""
         if not condition:
             raise RuntimeError(message)
 
-    def command(label, argv):
+    def command(label, argv, timeout=60):
+        """Run a bounded command, retaining its output and failure evidence."""
         log = run / (label + ".log")
-        entry = {"argv": [str(a) for a in argv], "log": str(log)}
+        entry = {"argv": [str(a) for a in argv], "log": str(log), "timeout_seconds": timeout}
         evidence["commands"].append(entry)
         with log.open("w") as output:
-            result = subprocess.run(entry["argv"], stdout=output, stderr=subprocess.STDOUT, check=False)
+            try:
+                result = subprocess.run(entry["argv"], stdout=output, stderr=subprocess.STDOUT,
+                                        check=False, timeout=timeout)
+            except subprocess.TimeoutExpired as error:
+                entry.update(exit_code=None, timed_out=True)
+                message = f"{label} timed out after {timeout} seconds; see {log}"
+                output.write(f"\n{message}\n")
+                raise RuntimeError(message) from error
         entry["exit_code"] = result.returncode
         check(result.returncode == 0, f"{label} failed ({result.returncode}); see {log}")
         return log.read_text(errors="replace").strip()
 
     def flatten(node):
+        """Yield each node in SwiftPM's dependency graph."""
         yield node
         for child in node.get("dependencies", []):
             yield from flatten(child)
 
     def pins(path):
+        """Index the lockfile's pins by package identity."""
         return {p["identity"]: p for p in json.loads(path.read_text())["pins"]}
 
     try:
@@ -78,9 +90,9 @@ def main():
         package = run / "consumer"
         shutil.copytree(source, package, ignore=shutil.ignore_patterns(".build", ".swiftpm", ".DS_Store"))
         options = ["--package-path", package, "--scratch-path", scratch]
-        command("resolve", ["swift", "package", *options, "resolve"])
+        command("resolve", ["swift", "package", *options, "resolve"], timeout=600)
         check(pins(package / "Package.resolved") == original_pins, "Resolution changed the fixture's exact pins")
-        graph = json.loads(command("graph", ["swift", "package", *options, "show-dependencies", "--format", "json"]))
+        graph = json.loads(command("graph", ["swift", "package", *options, "show-dependencies", "--format", "json"], timeout=120))
         nodes = {n["identity"]: n for n in flatten(graph)}
         # SwiftPM can omit SwiftSyntax from show-dependencies when using a prebuilt.
         # Verify its resolved checkout through workspace state instead of ignoring it.
@@ -119,7 +131,7 @@ def main():
             evidence["dependencies"][identity] = {"version": baseline.get("version"), "revision": revision,
                                                    "clean": True, "prebuilt_selected": identity in prebuilts}
         output = command("swift-test", ["swift", "test", *options, "--jobs", "2", "--no-parallel", "-Xswiftc",
-                                         "-strict-concurrency=complete", "-Xswiftc", "-warnings-as-errors"])
+                                         "-strict-concurrency=complete", "-Xswiftc", "-warnings-as-errors"], timeout=1800)
         summaries = re.findall(r"Test run with (\d+) tests? in (\d+) suites? passed", output)
         check(bool(summaries), "Swift Testing passed summary not found; inspect the test log")
         evidence["swift_test_result"] = {"tests": sum(int(x) for x, _ in summaries),
