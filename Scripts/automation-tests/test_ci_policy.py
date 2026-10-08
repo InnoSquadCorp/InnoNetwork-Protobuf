@@ -98,6 +98,9 @@ class WorkflowTests(unittest.TestCase):
             if key == 'static-contracts':
                 self.assertNotIn('needs', job)
                 self.assertEqual(job['if'], jobs['ci-plan']['if'])
+            elif key == 'consumer-smoke':
+                self.assertEqual(job['needs'], ['ci-plan', 'build-and-test'])
+                self.assertEqual(job['if'], 'fromJSON(needs.ci-plan.outputs.plan).jobs.consumer-smoke')
             elif key not in {'ci-plan','ci-required'}:
                 self.assertEqual(job['needs'],'ci-plan')
                 if key!='policy':self.assertEqual(job['if'],'fromJSON(needs.ci-plan.outputs.plan).jobs.'+key)
@@ -145,8 +148,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(release.get('on', release.get('true'))['workflow_dispatch']['inputs']['publish']['default'])
         validation = release['jobs']['validate-release']
         runs = '\n'.join(step.get('run', '') for step in validation['steps'])
-        self.assertIn('env -u INNONETWORK_LOCAL_PATH xcrun swift package resolve', runs)
-        self.assertIn('ruby Scripts/check_dependency_integrity.rb', runs)
+        self.assertIn('env -u INNONETWORK_LOCAL_PATH bash Scripts/validate_candidate.sh release', runs)
+        shared = (ROOT / 'Scripts/validate_candidate.sh').read_text()
+        self.assertIn('ruby Scripts/check_dependency_integrity.rb', shared)
+        self.assertIn('ruby Scripts/check_public_core.rb', shared)
         self.assertIn('bash Scripts/check_release_gate.sh', runs)
 
     def test_codeql_has_one_change_owner_and_keeps_scheduled_security_scan(self):

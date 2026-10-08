@@ -91,11 +91,6 @@ jobs:
           xcodebuild -version
           xcrun swift --version
 
-      - name: Resolve dependencies
-        run: |
-          xcrun swift package resolve
-          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
-
       - name: Validate exact public candidate
         env:
           VALIDATION_MODE: ${{ fromJSON(needs.ci-plan.outputs.plan).lane == 'release-validation' && 'release' || 'standard' }}
@@ -170,6 +165,7 @@ jobs:
         run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
 
       - name: Resolve dependencies
+        if: ${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}
         run: |
           xcrun swift package resolve
           ruby Scripts/check_dependency_integrity.rb .build Package.resolved
@@ -180,36 +176,27 @@ jobs:
           ruby Scripts/test_release_gate.rb
 
       - name: Build documentation smoke target
+        if: ${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}
         run: xcrun swift build --target InnoNetworkProtobufDocSmoke
 
       - name: Run documentation smoke target
+        if: ${{ !fromJSON(needs.ci-plan.outputs.plan).jobs.build-and-test }}
         run: xcrun swift run InnoNetworkProtobufDocSmoke
 
   consumer-smoke:
-    needs: ci-plan
+    needs: [ci-plan, build-and-test]
     if: fromJSON(needs.ci-plan.outputs.plan).jobs.consumer-smoke
     name: Consumer Smoke
-    runs-on: macos-15
-    timeout-minutes: 30
-
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.0.1.app
-
-      - name: Build and run preferred and compatibility product consumers
-        working-directory: Examples/ConsumerSmoke
+      - name: Confirm consumer coverage from the successful public matrix
+        env:
+          PUBLIC_MATRIX_RESULT: ${{ needs.build-and-test.result }}
         run: |
-          xcrun swift run ConsumerSmoke
-          xcrun swift run LegacyConsumerSmoke
-          ruby ../../Scripts/check_dependency_integrity.rb .build Package.resolved
+          [[ "$PUBLIC_MATRIX_RESULT" == success ]]
+          echo 'Preferred, compatibility and macro-off consumers ran in each public Xcode matrix entry.'
 
-      - name: Verify macro-disabled consumer graph
-        run: bash Scripts/check_macro_disabled_consumer.sh
   paired-candidate:
     needs: ci-plan
     if: fromJSON(needs.ci-plan.outputs.plan).jobs.paired-candidate

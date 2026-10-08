@@ -99,10 +99,6 @@ jobs:
           bash Scripts/check_release_gate.sh "$mode" "$VERSION"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-      - name: Resolve public dependencies
-        run: |
-          env -u INNONETWORK_LOCAL_PATH xcrun swift package resolve
-          ruby Scripts/check_dependency_integrity.rb .build Package.resolved
       - name: Contracts and release negative controls
         run: |
           bash Scripts/check_docs_contract_sync.sh

@@ -194,13 +194,15 @@ struct ProtobufCoreBoundaryTests {
     }
 
     @Test(
-        "Malformed-message errors redact bytes and preserve their category",
-        arguments: BoundaryEndpointStyle.allCases)
-    fileprivate func decodingPrivacy(style: BoundaryEndpointStyle) async throws {
+        "Malformed and truncated messages redact bytes and preserve their category",
+        arguments: BoundaryEndpointStyle.allCases, [false, true])
+    fileprivate func decodingPrivacy(style: BoundaryEndpointStyle, truncated: Bool) async throws {
+        let bytes = truncated ? Data([0x0a, 2, 1]) : Data([0xff])
+        let expected: ProtobufDecodingFailure = truncated ? .truncatedMessage : .malformedMessage
         let session = MockURLSession()
         session.setScriptedResponses([
             .http(
-                statusCode: 200, data: Data([0xff]),
+                statusCode: 200, data: bytes,
                 headers: ["Content-Type": "application/protobuf", "Cache-Control": "no-store"],
                 url: endpointURL),
             .http(
@@ -214,7 +216,7 @@ struct ProtobufCoreBoundaryTests {
         } catch NetworkError.decoding(let stage, let error, let response) {
             #expect(stage == .responseBody)
             #expect(error.domain == ProtobufDecodingFailure.errorDomain)
-            #expect(error.code == ProtobufDecodingFailure.truncatedMessage.rawValue)
+            #expect(error.code == expected.rawValue)
             #expect(response.data.isEmpty)
         }
         #expect(try await execute(core, style: style) == message())

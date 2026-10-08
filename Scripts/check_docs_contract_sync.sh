@@ -58,5 +58,9 @@ ruby -e '
 '
 echo 'docs-contract-sync: OK'
 
-# Both macro-enabled and macro-disabled executable consumers use the same socket fixture.
-cmp Examples/ValidationApp/Sources/ValidationKit/LoopbackFixture.swift Examples/ManualConsumerSmoke/Sources/ManualConsumerSmoke/LoopbackFixture.swift
+# One shared fixture implementation is used only by validation packages.
+[[ "$(find Examples -name LoopbackFixture.swift | wc -l | tr -d ' ')" == 1 ]]
+[[ -f Examples/ValidationSupport/Sources/ProtobufValidationSupport/LoopbackFixture.swift ]]
+for manifest in Examples/ManualConsumerSmoke/Package.swift Examples/ValidationApp/Package.swift; do
+  grep -Fq '.package(name: "ProtobufValidationSupport", path: "../ValidationSupport")' "$manifest"
+done

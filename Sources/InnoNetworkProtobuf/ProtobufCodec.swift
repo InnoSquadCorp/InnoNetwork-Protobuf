@@ -109,7 +109,7 @@ public struct ProtobufCodecOptions: Sendable {
 
     func requestOptions(_ options: EncodedRequestOptions, hasBody: Bool) throws(NetworkError)
         -> EncodedRequestOptions {
-        do { try encoding.validate(); try decoding.validate() }
+        do { try decoding.validate() }
         catch let failure as EncodedPayloadFailure { throw .configuration(reason: .invalidPayload(failure)) }
         catch { throw .configuration(reason: .invalidPayload(.mediaType)) }
         var result = try ProtobufMedia.requestOptions(options, encoding: encoding, hasBody: hasBody)
@@ -120,7 +120,8 @@ public struct ProtobufCodecOptions: Sendable {
                 let media = try raw.split(separator: ",", omittingEmptySubsequences: false).map {
                     try ProtobufMedia.parse(String($0))
                 }
-                guard Set(media) == decoding.acceptedMediaTypes, media.count == Set(media).count else {
+                let uniqueMedia = Set(media)
+                guard uniqueMedia == decoding.acceptedMediaTypes, media.count == uniqueMedia.count else {
                     throw ProtobufDecodingFailure.invalidMediaType
                 }
             } catch { throw .configuration(reason: .invalidPayload(.mediaType)) }
@@ -221,11 +222,9 @@ extension EncodedRequest where Output: SwiftProtobuf.Message {
         method: HTTPMethod, path: String, auth: SessionAuthentication,
         body: Message?, codec: ProtobufCodecOptions = .init(), options: EncodedRequestOptions = .init()
     ) throws(NetworkError) -> Self {
-        Self(
-            method: method, path: path, auth: auth,
-            body: body.map { .protobuf($0, options: codec.encoding) },
-            options: try codec.requestOptions(options, hasBody: body != nil),
-            responseDecoder: .protobuf(options: codec.decoding))
+        try makeProtobufRequest(method: method, path: path, auth: auth,
+                                body: body.map { .protobuf($0, options: codec.encoding) },
+                                codec: codec, options: options)
     }
 
     /// Sends a protobuf body and decodes a protobuf response through the core executor.
@@ -233,10 +232,9 @@ extension EncodedRequest where Output: SwiftProtobuf.Message {
         method: HTTPMethod, path: String, auth: SessionAuthentication,
         body: Message, codec: ProtobufCodecOptions = .init(), options: EncodedRequestOptions = .init()
     ) throws(NetworkError) -> Self {
-        Self(
-            method: method, path: path, auth: auth, body: .protobuf(body, options: codec.encoding),
-            options: try codec.requestOptions(options, hasBody: true),
-            responseDecoder: .protobuf(options: codec.decoding))
+        try makeProtobufRequest(method: method, path: path, auth: auth,
+                                body: .protobuf(body, options: codec.encoding),
+                                codec: codec, options: options)
     }
 
     /// Bodyless request; query items remain ordinary HTTP query values, not protobuf bytes.
@@ -244,10 +242,17 @@ extension EncodedRequest where Output: SwiftProtobuf.Message {
         method: HTTPMethod, path: String, auth: SessionAuthentication,
         codec: ProtobufCodecOptions = .init(), options: EncodedRequestOptions = .init()
     ) throws(NetworkError) -> Self {
-        Self(
-            method: method, path: path, auth: auth,
-            options: try codec.requestOptions(options, hasBody: false),
-            responseDecoder: .protobuf(options: codec.decoding))
+        try makeProtobufRequest(method: method, path: path, auth: auth,
+                                body: nil, codec: codec, options: options)
+    }
+
+    private static func makeProtobufRequest(
+        method: HTTPMethod, path: String, auth: SessionAuthentication,
+        body: EncodedRequestBody?, codec: ProtobufCodecOptions, options: EncodedRequestOptions
+    ) throws(NetworkError) -> Self {
+        Self(method: method, path: path, auth: auth, body: body,
+             options: try codec.requestOptions(options, hasBody: body != nil),
+             responseDecoder: .protobuf(options: codec.decoding))
     }
 }
 

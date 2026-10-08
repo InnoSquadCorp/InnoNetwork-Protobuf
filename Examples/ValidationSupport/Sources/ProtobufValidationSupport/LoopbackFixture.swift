@@ -4,8 +4,8 @@ import os
 
 /// Sample-only HTTP fixture. Real sockets and URLSession, not a production server.
 /// Fixed loopback port keeps persistent cache identity stable across app launches.
-final class LoopbackFixture: Sendable {
-    static let baseURL = URL(string: "http://127.0.0.1:18764")!
+public final class LoopbackFixture: Sendable {
+    public static let baseURL = URL(string: "http://127.0.0.1:18764")!
     private let queue = DispatchQueue(label: "network-validation.fixture")
     private let listener: NWListener
     private struct State {
@@ -16,14 +16,14 @@ final class LoopbackFixture: Sendable {
     }
     private let state = OSAllocatedUnfairLock(initialState: State())
 
-    init() throws {
+    public init() throws {
         let parameters = NWParameters.tcp
         parameters.requiredLocalEndpoint = .hostPort(host: "127.0.0.1", port: 18764)
         parameters.allowLocalEndpointReuse = true
         listener = try NWListener(using: parameters)
     }
 
-    func start() async throws {
+    public func start() async throws {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 let stopped = state.withLock { state in
@@ -61,7 +61,7 @@ final class LoopbackFixture: Sendable {
         if let error { continuation?.resume(throwing: error) } else { continuation?.resume() }
     }
 
-    func stop() {
+    public func stop() {
         let connections = state.withLock { state in
             state.stopped = true
             let connections = Array(state.connections.values)
@@ -73,7 +73,7 @@ final class LoopbackFixture: Sendable {
         for connection in connections { connection.cancel() }
     }
 
-    func count(_ path: String) -> Int { state.withLock { $0.counts[path, default: 0] } }
+    public func count(_ path: String) -> Int { state.withLock { $0.counts[path, default: 0] } }
 
     private func accept(_ connection: NWConnection) {
         let admitted = state.withLock { state in

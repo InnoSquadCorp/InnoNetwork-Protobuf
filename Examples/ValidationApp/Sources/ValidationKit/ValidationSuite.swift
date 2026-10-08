@@ -1,4 +1,5 @@
 import Foundation
+import ProtobufValidationSupport
 import InnoNetwork
 import InnoNetworkPersistentCache
 import InnoNetworkProtobuf

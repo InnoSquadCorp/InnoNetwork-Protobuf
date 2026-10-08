@@ -11,6 +11,7 @@ if let path = ProcessInfo.processInfo.environment["INNONETWORK_LOCAL_PATH"] {
 let package = Package(
     name: "ManualConsumerSmoke", platforms: [.macOS(.v14)],
     dependencies: [
+        .package(name: "ProtobufValidationSupport", path: "../ValidationSupport"),
         core, .package(name: "InnoNetwork-Protobuf", path: "../..", traits: []),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.1"),
     ],
@@ -18,6 +19,7 @@ let package = Package(
         .executableTarget(
             name: "ManualConsumerSmoke",
             dependencies: [
+                .product(name: "ProtobufValidationSupport", package: "ProtobufValidationSupport"),
                 .product(name: "InnoNetwork", package: "InnoNetwork"),
                 .product(name: "InnoNetwork-Protobuf", package: "InnoNetwork-Protobuf"),
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),

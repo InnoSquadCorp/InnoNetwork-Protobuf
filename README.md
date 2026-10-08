@@ -226,3 +226,10 @@ real macro-off sockets), and cold/warm loopback checks. Release validation runs 
 same script with `release`, including an isolated TSAN build, on both supported
 Xcodes. CI Required includes the pinned pair. Release publishing still requires
 immutable tag identity, main ancestry, annotated tag and committed Ready notes.
+
+The loopback fixture has one implementation in `Examples/ValidationSupport`, a
+local sample-only package with no Core or compiler dependencies. The macro-on and
+macro-off consumers keep their own independent graphs. On full CI runs, the public
+Xcode matrix owns consumer execution; the `Consumer Smoke` compatibility check
+requires that complete matrix to succeed instead of repeating its work. Docs-only
+changes keep their independent compiled documentation smoke path.

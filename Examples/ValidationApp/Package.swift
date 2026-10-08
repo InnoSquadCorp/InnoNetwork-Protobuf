@@ -13,6 +13,7 @@ let package = Package(
     platforms: [.iOS(.v18), .macOS(.v15)],
     products: [.library(name: "ValidationKit", targets: ["ValidationKit"])],
     dependencies: [
+        .package(name: "ProtobufValidationSupport", path: "../ValidationSupport"),
         core, .package(name: "InnoNetwork-Protobuf", path: "../.."),
         .package(url: "https://github.com/apple/swift-protobuf.git", from: "1.38.1"),
     ],
@@ -20,6 +21,7 @@ let package = Package(
         .target(
             name: "ValidationKit",
             dependencies: [
+                .product(name: "ProtobufValidationSupport", package: "ProtobufValidationSupport"),
                 .product(name: "InnoNetwork", package: "InnoNetwork"),
                 .product(name: "InnoNetworkPersistentCache", package: "InnoNetwork"),
                 .product(name: "InnoNetwork-Protobuf", package: "InnoNetwork-Protobuf"),

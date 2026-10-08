@@ -119,3 +119,23 @@ policy and detailed malformed/depth/required-field errors but remains uncompiled
 in this VM. The paired graph fix still needs real SwiftPM/Xcode evidence. New
 Package.resolved files were not fabricated. This is a locally prepared candidate,
 not a verified releasable build.
+
+
+## Local cleanup after the deployment plan
+
+The next local pass implements A1–A5 without changing Core or its exact pin.
+The malformed 0xff privacy fixture now expects malformedMessage, with a separate
+length-delimited truncated case and payload-redaction assertions. A sample-only
+ValidationSupport package owns the single loopback implementation. Public consumer
+execution is owned by the complete Xcode matrix; the retained Consumer Smoke check
+fails unless that matrix succeeds. Docs-only compilation remains independent.
+Redundant public/release resolution steps, repeated request assembly and duplicate
+Set construction are removed. The standalone deferred encoder validation remains.
+
+Python automation now has 41 tests, including a real shell negative control for
+the retained consumer context; all passed in the VM. Static contracts, public
+Core pin fixtures, actionlint, shell/Ruby syntax and whitespace checks passed.
+These are implementation/static milestones only. The new support package,
+factory overloads and corrected Swift fixtures still require actual Xcode builds
+and runtime tests. B1 is the next blocked step: this VM has no Swift or xcrun;
+starting a new Mac task requires the user's environment/model/effort approval.
