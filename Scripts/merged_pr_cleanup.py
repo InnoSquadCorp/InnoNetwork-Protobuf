@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Trusted merged-PR cleanup executor. Defaults to read-only dry-run.
 
-The shipped workflow grants read-only permissions and always uses --dry-run.
-The optional executor requires --apply plus CLEANUP_ENABLE_WRITES=enabled;
-granting a workflow write token and wiring activation require separate approval.
+The trusted default-branch workflow opts into cancellation with a dedicated
+job-level actions:write token. Standalone execution remains dry-run unless both
+--apply and CLEANUP_ENABLE_WRITES=enabled are supplied.
 Every candidate is authoritatively rechecked immediately before POST /cancel.
 """
 import argparse
@@ -62,12 +62,21 @@ def validate_context(event,context,config):
     if config.get('schema')!=1 or config.get('status')!='reviewed-cleanup-policy-v1':raise ValueError('reviewed cleanup config required')
     allowed=config.get('merged_pr_pull_request_workflow_allowlist')
     preserved=config.get('always_preserved_workflows',[])
-    if (not isinstance(allowed,list) or not allowed or
+    if (not isinstance(allowed,list) or allowed!=['.github/workflows/ci.yml'] or
             not all(isinstance(path,str) for path in allowed) or len(set(allowed))!=len(allowed) or
             not isinstance(preserved,list) or not all(isinstance(path,str) for path in preserved) or
             set(allowed)&set(preserved)):
         raise ValueError('disjoint explicit workflow allowlist required')
     return repo
+
+
+def workflow_identity(api,repo,path):
+    if path!='.github/workflows/ci.yml':raise ValueError('only reviewed CI workflow is supported')
+    metadata=api.request('GET',f'repos/{repo}/actions/workflows/ci.yml')
+    identity=metadata.get('id')
+    if type(identity) is not int or identity<1 or metadata.get('path')!=path or metadata.get('state')!='active':
+        raise ValueError('active authoritative CI workflow identity required')
+    return identity
 
 
 def inventory(api,repo,created_at,merged_at,allowed_workflows,head_branch):
@@ -108,22 +117,25 @@ def execute(event,context,config,api,apply=False):
     current=api.request('GET',f'repos/{repo}/pulls/{number}')
     trusted={**event,'repository':metadata,'pull_request':current}
     allowed=set(config['merged_pr_pull_request_workflow_allowlist'])
+    workflow_ids={path:workflow_identity(api,repo,path) for path in sorted(allowed)}
     # Validate authoritative merged state before listing any runs or writing.
-    selector().select(trusted,[],repo,repo_id,allowed,True,True)
+    selector().select(trusted,[],repo,repo_id,allowed,workflow_ids,True)
     if current.get('head',{}).get('sha')!=event.get('pull_request',{}).get('head',{}).get('sha'):
         raise ValueError('closed event head no longer matches authoritative PR')
     runs=inventory(api,repo,current['created_at'],current['merged_at'],allowed,current.get('head',{}).get('ref'))
-    plan=selector().select(trusted,runs,repo,repo_id,allowed,True,True)
+    plan=selector().select(trusted,runs,repo,repo_id,allowed,workflow_ids,True)
     report={'dry_run':not apply,'repository':repo,'pr':number,'candidates':plan['candidates'],'cancellation_requested':[],'already_finished_or_changed':[]}
     if not apply:return report
     for candidate in plan['candidates']:
+        if workflow_identity(api,repo,candidate['workflow'])!=candidate['workflow_id']:
+            raise ValueError('CI workflow identity raced before cancellation')
         latest_pr=api.request('GET',f'repos/{repo}/pulls/{number}')
-        if (latest_pr.get('head',{}).get('sha')!=current['head']['sha'] or
+        if (latest_pr.get('head')!=current['head'] or latest_pr.get('base')!=current['base'] or
                 any(latest_pr.get(key)!=current.get(key) for key in ('created_at','merged_at'))):
             raise ValueError('PR identity or merge window raced before cancellation')
         fresh_event={**trusted,'pull_request':latest_pr}
         fresh_run=api.request('GET',f'repos/{repo}/actions/runs/{candidate["run_id"]}')
-        fresh=selector().select(fresh_event,[fresh_run],repo,repo_id,allowed,True,True)['candidates']
+        fresh=selector().select(fresh_event,[fresh_run],repo,repo_id,allowed,workflow_ids,True)['candidates']
         if fresh!=[candidate]:
             report['already_finished_or_changed'].append(candidate['run_id']);continue
         try:

@@ -9,6 +9,6 @@
     ".github/workflows/merged-pr-cleanup.yml",
     ".github/workflows/release.yml"
   ],
-  "event_filter": "pull_request only; never select by SHA alone",
-  "permission_activation": "not activated: read-only workflow; future actions:write and INNO_MERGED_PR_CLEANUP=enabled opt-in require separate approval"
+  "event_filter": "queued/in_progress pull_request only; exact merged head, branch, native PR association and authoritative CI workflow ID",
+  "permission_activation": "dedicated trusted default-branch job actions:write; --apply plus CLEANUP_ENABLE_WRITES=enabled; active only after this workflow is merged"
 }
