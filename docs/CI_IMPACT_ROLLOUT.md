@@ -74,22 +74,26 @@ Native concurrency cannot guarantee newer-head-first scheduling if an older
 job reaches its group late. This is a documented scheduling limitation, not a
 claim of atomic stale-job cancellation.
 
-## Merged PR cleanup preparation
+## Merged PR cleanup activation
 
 The new `pull_request_target: closed` workflow runs only after a merge on the
 trusted default branch. It checks out immutable `github.workflow_sha`, never PR
-code. Its current job has only contents/actions/pull-requests read permissions
-and explicitly uses `--dry-run`. It inventories only `ci.yml` pull-request runs
-associated with the exact merged PR, including earlier heads, then rechecks
-current authoritative evidence. Main, release, manual runs, other PRs,
-ambiguous associations, post-merge/rerun activity and unknown evidence are
-preserved.
+code. Only its dedicated job grants `actions: write`; contents and
+pull-requests remain read-only. It opts in with `--apply` and
+`CLEANUP_ENABLE_WRITES=enabled`, and activates for merged PR closed events only
+after this workflow change reaches the default branch. It inventories only
+`ci.yml` pull-request runs in `queued` or `in_progress`, requiring the exact
+merged head, branch, native PR association and authoritative API workflow ID.
+It rechecks the workflow, PR and run immediately before each cancellation.
+Earlier heads, main/default/release branches, manual runs, other PRs/workflows,
+completed runs, ambiguous associations and intentional post-merge reruns are
+preserved. Reopened/unmerged PRs, mismatched identity/SHA, API errors and
+incomplete inventory cannot authorize cancellation.
 
-Actual cancellation remains disabled pending separate authorization for a
-narrow job-level `actions: write` permission and explicit activation. No settings,
-repository variables, credentials or protection rules are changed here. Even
-when activated, GitHub GET/POST cancellation cannot be atomic; fresh rechecks
-reduce but cannot eliminate the race.
+Standalone CLI execution remains dry-run by default. No settings, repository
+variables, credentials or protection rules are changed here. GitHub GET/POST
+cancellation cannot be atomic; fresh rechecks reduce but cannot eliminate the
+race. Fake API regressions validate the write path without cancelling live runs.
 
 ## Verification and acceptance
 
