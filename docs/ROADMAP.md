@@ -1,6 +1,6 @@
 # Roadmap
 
-## 6.0 Release Boundary
+## 6.1.1 Release Boundary
 
 The approved breaking redesign includes public core encoded requests, shared
 operations/cancellation, explicit HTTP empty semantics, configurable binary codec,
@@ -8,12 +8,13 @@ standard media negotiation, resource budgets and hardened release validation.
 It supersedes the earlier SPI-only compatibility reset and absorbs the former
 encoding/decoding/media/generated-client candidates. Core 6.1.1 is published and is the exact dependency pin.
 
-## Remaining gates
+## Release qualification
 
-- Local core and adapter regression/integration/platform evidence.
-- Remote-only dependency resolution and consumer checks against exactly Core 6.1.1.
-- Exact adapter candidate Xcode 26/27 CI, five platforms, Ready notes and annotated tag.
-- Separate publication approval, then both-remote-tag consumer verification.
+Adapter [6.1.1](https://github.com/InnoSquadCorp/InnoNetwork-Protobuf/releases/tag/6.1.1)
+is published. The [release qualification record](releases/6.1.1.md) preserves
+the reviewed gates and evidence; it is not a request to publish the same tag again.
+Future releases must repeat the applicable exact-revision, consumer, platform
+and release gates. Historical local-pair results do not certify later changes.
 
 ## Optional follow-ups
 

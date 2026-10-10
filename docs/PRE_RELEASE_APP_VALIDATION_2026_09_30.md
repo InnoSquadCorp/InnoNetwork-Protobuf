@@ -1,5 +1,10 @@
 # Candidate app validation — 2026-09-30
 
+> Historical record — retained for the source, date and environment below.
+> For the published 6.1.1 contract, use the [current quick start](../README.md)
+> and [documentation map](README.md). Unexecuted checks are not implied passes.
+
+
 Status: local device verification and core full preflight complete; exact-pair
 remote CI and public-dependency release gates remain pending.
 Core input was `7d46c68`, followed by cache telemetry hardening `d1b4d93`.

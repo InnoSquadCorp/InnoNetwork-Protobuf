@@ -15,8 +15,7 @@ Include:
 
 ## Supported Versions
 
-- Until 6.0 is published, 3.0.1 remains the supported public release; 6.0 is a development candidate.
-- After 6.0 publication, the latest 6.x is the primary supported line. Critical 3.x reports remain triaged on a best-effort basis; no routine 3.x feature backports are promised.
+- Stable 6.1.1 is published; the latest 6.x is the primary supported line. Critical 3.x reports remain triaged on a best-effort basis; no routine 3.x feature backports are promised.
 - Codec byte budgets do not bound intermediate encoder allocations. Do not log message bodies or credential-bearing codec errors. Select server-specific request, response and nesting limits.
 
 ## Disclosure

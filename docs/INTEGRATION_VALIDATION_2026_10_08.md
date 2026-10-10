@@ -1,5 +1,10 @@
 # Protobuf replacement PR: local integration evidence
 
+> Historical record — retained for the source, date and environment below.
+> For the published 6.1.1 contract, use the [current quick start](../README.md)
+> and [documentation map](README.md). Unexecuted checks are not implied passes.
+
+
 Status: local preparation only; no remote push, PR creation, merge, tag or release.
 
 ## Exact inputs

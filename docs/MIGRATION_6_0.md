@@ -1,7 +1,7 @@
 # Breaking 3.0.1 to 6.1.1 migration
 
-Requires exactly published Core 6.1.1. The adapter version is 6.1.1; its tag must be published before remote-only
-consumers can resolve this pair. This is a breaking major upgrade from 3.0.1,
+Both adapter 6.1.1 and its exact Core 6.1.1 dependency are published.
+Use the remote dependencies in the [current quick start](../README.md). This is a breaking major upgrade from 3.0.1,
 not a patch upgrade from a previously published adapter 6.1.0.
 Do not modify existing Core tags.
 
