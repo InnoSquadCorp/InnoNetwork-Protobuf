@@ -57,6 +57,7 @@ ruby -e '
   abort "Cache recovery documentation differs from the executable consumer" unless examples.length == 1 && documented == examples
 '
 python3 Scripts/check_readme_parity.py
+python3 Scripts/test_readme_parity_encoding.py
 echo 'docs-contract-sync: OK'
 
 # One shared fixture implementation is used only by validation packages.
