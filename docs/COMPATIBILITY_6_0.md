@@ -1,5 +1,10 @@
 # InnoNetwork 6.0 compatibility
 
+> Historical record — retained for the source, date and environment below.
+> For the published 6.1.1 contract, use the [current quick start](../README.md)
+> and [documentation map](README.md). Unexecuted checks are not implied passes.
+
+
 > Historical evidence for the superseded SPI adapter, before the approved
 > breaking redesign. It does **not** validate the current encoded-request API
 > against published core 6.0. See [current implementation evidence](IMPLEMENTATION_6_0.md).

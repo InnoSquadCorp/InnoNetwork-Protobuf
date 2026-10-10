@@ -27,9 +27,9 @@
 ### Repository and package naming
 
 - Canonical repository: `https://github.com/InnoSquadCorp/InnoNetwork-Protobuf`.
-- New 6.0 integrations should select product `InnoNetwork-Protobuf` and keep
+- New 6.1.1 integrations should select product `InnoNetwork-Protobuf` and keep
   `import InnoNetworkProtobuf` in Swift source.
-- The legacy product `InnoNetworkProtobuf` is still available in 6.0. Both
+- The legacy product `InnoNetworkProtobuf` is still available in 6.1.1. Both
   products expose the same module; do not depend on both simultaneously.
 - When changing the dependency URL, also change the `.product(..., package:)`
   reference to `InnoNetwork-Protobuf` (unless an explicit package alias is in

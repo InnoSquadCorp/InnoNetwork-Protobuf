@@ -1,5 +1,10 @@
 # Deployment plan local progress
 
+> Historical record — retained for the source, date and environment below.
+> For the published 6.1.1 contract, use the [current quick start](../README.md)
+> and [documentation map](README.md). Unexecuted checks are not implied passes.
+
+
 Baseline: 4976e729b3c2cd47e13fbab55584972d203881e1. Core remains exact 6.1.1.
 
 | Plan item | Local implementation | Evidence | Still required |

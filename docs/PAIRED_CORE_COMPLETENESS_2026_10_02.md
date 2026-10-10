@@ -1,5 +1,10 @@
 # Protobuf / Core completeness — 2026-10-02
 
+> Historical record — retained for the source, date and environment below.
+> For the published 6.1.1 contract, use the [current quick start](../README.md)
+> and [documentation map](README.md). Unexecuted checks are not implied passes.
+
+
 Status: local development-pair verification, not release readiness.
 
 ## Fixed inputs and scope
